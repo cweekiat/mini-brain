@@ -309,7 +309,9 @@ $("s1-fire").onclick = () => { d1.zap = 2.5; if (run1.paused) $("s1-pause").clic
 
 function frame1() {
   for (let k = 0; k < 20; k++) { // 2 ms of brain time per frame
-    const aFired = d1.a.step(DT, d1.aIn + (d1.zap > 0 ? 12 : 0));
+    const zap = d1.zap > 0 ? 12 : 0;
+    if (zap) d1.zapSeen = performance.now();
+    const aFired = d1.a.step(DT, d1.aIn + zap);
     if (d1.zap > 0) d1.zap -= DT;
     if (aFired) { d1.syn.onPreSpike(); d1.aSpikes.push(d1.t); d1.aHit = performance.now(); d1.pspStart = d1.b.V; d1.pspPeak = d1.b.V; }
     const I = d1.syn.step(DT);
@@ -330,24 +332,30 @@ function frame1() {
 }
 function code1() {
   const now = performance.now(), aH = now - d1.aHit < 300 ? "hit" : "", bH = now - d1.bHit < 300 ? "hit" : "";
+  const zap = now - (d1.zapSeen ?? -1e9) < 400 ? 12 : 0;
   paint("code1", [
-    C("# inputs"),
+    C("# fixed: dt = 0.1 ms,"),
+    C("# tau_syn = 5 ms (receptors close)"),
+    C("# inputs: sliders + Fire A button"),
     `a_input = ${IN(d1.aIn.toFixed(2))}  ${C("# nA")}`,
-    `w = ${IN(d1.syn.w.toFixed(1))}  ${C("# weight, <0 inhibits")}`,
-    `b_input = ${IN(d1.bIn.toFixed(2))}`,
+    `zap = ${IN(zap)}  ${C("# 12 nA for 2.5 ms")}`,
+    `w = ${IN(d1.syn.w.toFixed(1))}  ${C("# negative = inhibitory")}`,
+    `b_input = ${IN(d1.bIn.toFixed(2))}  ${C("# nA")}`,
     "",
-    C("# A fires → transmitter released"),
-    [`${K("if")} a.step(dt, a_input):${aH ? "  " + C("← A fired") : ""}`, aH],
+    C("# every step:"),
+    C("# 1. A fires → transmitter released"),
+    [`${K("if")} a.step(dt, a_input + zap):${aH ? "  " + C("←") : ""}`, aH],
     ["    I_syn += w", aH],
-    "",
-    C("# receptors close (τ = 5 ms)"),
+    C("# 2. receptors close again"),
     "I_syn -= dt / tau_syn * I_syn",
     `${C("# → I_syn =")} ${OUT(num(d1.syn.I, 2) + " nA")}`,
-    "",
-    C("# B adds it to its other input"),
+    C("# 3. B sums both inputs"),
     [`${K("if")} b.step(dt, b_input + I_syn):`, bH],
-    [`    ${C(bH ? "# ← B fired!" : "# B fires")}`, bH],
+    [`    b_spikes += 1${bH ? "  " + C("← B fired!") : ""}`, bH],
     `${C("# → V_B =")} ${OUT(num(d1.b.V) + " mV")}`,
+    "",
+    C("# a and b are the LIF neurons"),
+    C("# from Step 1"),
   ]);
 }
 
@@ -368,6 +376,8 @@ function frame2() {
     }
     const zA = d2.zapA.some((z) => d2.t >= z && d2.t < z + 1) ? 30 : 0;
     const zB = d2.zapB.some((z) => d2.t >= z && d2.t < z + 1) ? 30 : 0;
+    if (zA) d2.zapASeen = performance.now();
+    if (zB) d2.zapBSeen = performance.now();
     d2.stdp.decay(DT);
     const aF = d2.a.step(DT, zA), bF = d2.b.step(DT, zB);
     if (aF) { d2.stdp.onPre(d2.syn); d2.tA = d2.t; d2.aHit = performance.now(); }
@@ -399,26 +409,34 @@ function drawCurve() {
 }
 function code2() {
   const now = performance.now(), aH = now - d2.aHit < 400 ? "hit" : "", bH = now - d2.bHit < 400 ? "hit" : "";
+  const za = now - (d2.zapASeen ?? -1e9) < 400 ? 30 : 0, zb = now - (d2.zapBSeen ?? -1e9) < 400 ? 30 : 0;
   const g = d2.gap;
   paint("code2", [
+    C("# fixed: dt = 0.1 ms"),
     C("# input: B fires after A by"),
     `gap = ${IN((g > 0 ? "+" : "") + g)}  ${C("# ms")}`,
     "",
-    C("# traces: fading memory of spikes"),
+    C("# every 200 ms, force one pair:"),
+    C("# 30 nA for 1 ms makes each fire"),
+    "zap_A = 30  at t",
+    "zap_B = 30  at t + gap",
+    `${C("# →")} zap_A=${OUT(za)} zap_B=${OUT(zb)}`,
+    "",
+    C("# every step:"),
     "x_pre  *= exp(-dt / 20)",
     "y_post *= exp(-dt / 20)",
     `${C("# →")} x_pre=${OUT(d2.stdp.xPre.toFixed(2))} y_post=${OUT(d2.stdp.yPost.toFixed(2))}`,
-    "",
-    [`${K("if")} a_fired:${aH ? "  " + C("← A fired") : ""}`, aH],
+    [`${K("if")} a.step(dt, zap_A):${aH ? "  " + C("← A") : ""}`, aH],
     ["    x_pre += 1", aH],
     [`    w -= 0.85 * y_post  ${C("# A late")}`, aH],
-    [`${K("if")} b_fired:${bH ? "  " + C("← B fired") : ""}`, bH],
+    [`${K("if")} b.step(dt, zap_B):${bH ? "  " + C("← B") : ""}`, bH],
     ["    y_post += 1", bH],
     [`    w += 0.80 * x_pre  ${C("# A early")}`, bH],
     "w = clip(w, 0, 10)",
+    `${C("# → w =")} ${OUT(d2.syn.w.toFixed(2))}  ${C("last pair")} ${OUT(d2.lastDw === null ? "–" : sgn(d2.lastDw))}`,
     "",
-    `${C("# → w =")} ${OUT(d2.syn.w.toFixed(2))}`,
-    `${C("# last pair:")} ${OUT(d2.lastDw === null ? "–" : sgn(d2.lastDw))}`,
+    C("# w is only measured here: both"),
+    C("# neurons are forced, like the lab"),
   ]);
 }
 
@@ -458,6 +476,8 @@ function frame3() {
     if (d3.queue.length && d3.bellZap.length === 0 && d3.food.length === 0 && (d3.trialEnd === null || d3.t > d3.trialEnd + 40)) schedule(d3.queue.shift());
     const zA = d3.bellZap.some((z) => d3.t >= z && d3.t < z + 2.5) ? 12 : 0;
     const food = d3.food.some((z) => d3.t >= z && d3.t < z + 3) ? 12 : 0;
+    if (zA) d3.bellSeen = performance.now();
+    if (food) d3.foodSeen = performance.now();
     d3.stdp.decay(DT);
     if (d3.a.step(DT, zA)) { d3.stdp.onPre(d3.syn); d3.syn.onPreSpike(); d3.aHit = performance.now(); }
     const I = d3.syn.step(DT);
@@ -480,26 +500,35 @@ function meter() {
 }
 function code3() {
   const now = performance.now(), bH = now - d3.bHit < 400 ? "hit" : "", aH = now - d3.aHit < 400 ? "hit" : "";
+  const bell = now - (d3.bellSeen ?? -1e9) < 400 ? 12 : 0, food = now - (d3.foodSeen ?? -1e9) < 400 ? 12 : 0;
   const script = {
     "Nothing yet": [C("# press a button")],
-    "Bell alone": ["ring(bell, t=0)"],
-    "Bell, then food": ["ring(bell, t=0)", `zap(drool, t=4)  ${C("# food")}`],
-    "Food, then bell": [`zap(drool, t=0)  ${C("# food")}`, "ring(bell, t=8)"],
+    "Bell alone": ["bell_zap at t = 0"],
+    "Bell, then food": ["bell_zap at t = 0", "food at t = 4"],
+    "Food, then bell": ["food at t = 0", "bell_zap at t = 8"],
   }[d3.last];
   paint("code3", [
-    `${C("# input: the trial you ran")}`,
+    C("# fixed: dt = 0.1 ms; bell_zap and"),
+    C("# food are 12 nA (2.5 ms, 3 ms)"),
+    C("# input: the trial you ran"),
     ...script.map((l) => [l, ""]),
+    `${C("# →")} bell_zap=${OUT(bell)} food=${OUT(food)}`,
     "",
-    C("# bell fires → push into drool"),
-    [`${K("if")} bell.fired:${aH ? "  " + C("← bell") : ""}`, aH],
-    ["    I_syn += w", aH],
+    C("# every step:"),
+    "x_pre  *= exp(-dt / 20)",
+    "y_post *= exp(-dt / 20)",
+    [`${K("if")} bell.step(dt, bell_zap):${aH ? "  " + C("← bell") : ""}`, aH],
+    ["    x_pre += 1", aH],
     [`    w -= 0.85 * y_post  ${C("# late")}`, aH],
-    C("# drool fires → STDP"),
-    [`${K("if")} drool.fired:${bH ? "  " + C("← drool!") : ""}`, bH],
+    ["    I_syn += w", aH],
+    "I_syn -= dt / 5 * I_syn",
+    [`${K("if")} drool.step(dt, I_syn + food):${bH ? "  " + C("←") : ""}`, bH],
+    ["    y_post += 1", bH],
     [`    w += 0.80 * x_pre  ${C("# early")}`, bH],
+    "w = clip(w, 0, 10)",
     "",
     `${C("# → w =")} ${OUT(d3.syn.w.toFixed(2))}  ${C("Δ")} ${OUT(d3.lastDw === null ? "–" : sgn(d3.lastDw))}`,
-    `${C("# fires alone at w ≥")} ${OUT(W_FIRE.toFixed(2))}`,
+    `${C("# bell alone fires drool at w ≥")} ${OUT(W_FIRE.toFixed(2))}`,
   ]);
 }
 

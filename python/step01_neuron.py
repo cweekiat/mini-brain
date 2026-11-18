@@ -81,26 +81,42 @@ class HH:
         return fired
 
 
-def firing_rate(make_neuron, input_value, dt=0.1, ms=1000):
-    """Simulate 1 s with a steady input and count the spikes (= Hz)."""
-    neuron, count = make_neuron(), 0
-    for i in range(int((ms + 100) / dt)):
-        if neuron.step(dt, input_value) and i * dt > 100:  # skip settling
+def firing_rate(cell, inp, ms=1000, dt=0.1):
+    """Steady input for `ms` (after 100 ms to settle); spikes per second."""
+    count, t = 0, 0.0
+    while t < ms + 100:
+        fired = cell.step(dt, inp)
+        if fired and t > 100:          # ignore the settling period
             count += 1
+        t += dt
     return count * 1000 / ms
+
+
+def run_bucket(inp, ms=200, dt=0.1, noise=0.0, tau=15.0, threshold=-55.0,
+               zap_at=None, seed=0):
+    """Demo 1 exactly: total input = inp + zap + noise * 1.5 * randn().
+    A zap is +3 nA for 5 ms. Returns the voltage trace and spike times."""
+    rng = np.random.default_rng(seed)
+    cell, V, spikes = LIF(tau, threshold), [], []
+    for i in range(int(ms / dt)):
+        t = i * dt
+        zap = 3.0 if zap_at is not None and zap_at <= t < zap_at + 5 else 0.0
+        I = inp + zap + noise * 1.5 * rng.standard_normal()
+        if cell.step(dt, I):
+            spikes.append(t)
+        V.append(cell.V)
+    return np.array(V), spikes
 
 
 if __name__ == "__main__":
     fig, ax = plt.subplots(3, 1, figsize=(8, 9), constrained_layout=True)
 
-    # Demo 1: the bucket at 3 nA
-    dt, lif, V = 0.1, LIF(), []
-    for _ in range(int(200 / dt)):
-        lif.step(dt, 3.0)
-        V.append(lif.V)
-    ax[0].plot(np.arange(len(V)) * dt, V)
+    # Demo 1: the bucket, input 1.3 nA with noise 2 (try-it task 4)
+    V, spikes = run_bucket(1.3, ms=400, noise=2.0)
+    ax[0].plot(np.arange(len(V)) * 0.1, V)
     ax[0].axhline(-55, ls="--", c="crimson", label="threshold")
-    ax[0].set(title="Leaky bucket, input 3 nA", xlabel="ms", ylabel="mV"); ax[0].legend()
+    ax[0].set(title=f"Leaky bucket, 1.3 nA + noise: {len(spikes)} spikes in 0.4 s",
+              xlabel="ms", ylabel="mV"); ax[0].legend()
 
     # Demo 2: one Hodgkin–Huxley spike and its gates
     dt, hh, rows = 0.01, HH(), []
@@ -119,9 +135,9 @@ if __name__ == "__main__":
     # Demo 3: firing rate vs input
     I_lif = np.arange(0, 5.01, 0.25)
     I_hh = np.arange(0, 20.01, 1.0)
-    ax[2].plot(I_lif, [firing_rate(LIF, I) for I in I_lif], label="bucket (nA)")
-    ax[2].plot(I_hh / 4, [firing_rate(HH, I, dt=0.025, ms=300) for I in I_hh], label="HH (µA/cm² ÷ 4)")
+    ax[2].plot(I_lif, [firing_rate(LIF(), I, ms=500) for I in I_lif], label="bucket (nA)")
+    ax[2].plot(I_hh / 4, [firing_rate(HH(), I, ms=300, dt=0.025) for I in I_hh], label="HH (µA/cm² ÷ 4)")
     ax[2].set(title="Strength becomes rhythm", xlabel="input", ylabel="spikes/s"); ax[2].legend()
 
-    print("HH firing at 10 µA/cm²:", firing_rate(HH, 10.0, dt=0.01, ms=1000), "Hz")
+    print("HH firing at 10 µA/cm²:", firing_rate(HH(), 10.0, ms=1000, dt=0.01), "Hz")
     plt.show()

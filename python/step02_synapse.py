@@ -45,6 +45,22 @@ class STDP:
         syn.w = float(np.clip(syn.w + self.A_plus * self.x_pre, 0, self.w_max))
 
 
+def run_synapse(a_input, w, b_input=0.0, ms=1000, fire_a_at=None):
+    """Demo 1 exactly. Fire A = +12 nA for 2.5 ms. Returns (A rate, B rate) in Hz."""
+    a, b, syn = LIF(), LIF(), Synapse(w)
+    a_spikes = b_spikes = 0
+    for i in range(int(ms / DT)):
+        t = i * DT
+        zap = 12.0 if fire_a_at is not None and fire_a_at <= t < fire_a_at + 2.5 else 0.0
+        if a.step(DT, a_input + zap):        # 1. A fires → transmitter released
+            syn.on_pre_spike()
+            a_spikes += 1
+        I_syn = syn.step(DT)                 # 2. receptors close again
+        if b.step(DT, b_input + I_syn):      # 3. B sums both inputs
+            b_spikes += 1
+    return a_spikes * 1000 / ms, b_spikes * 1000 / ms
+
+
 def epsp_size(w):
     """Peak bump in B (mV) from one spike of A through a synapse of weight w."""
     b, syn, peak = LIF(), Synapse(w), -70.0
@@ -105,5 +121,7 @@ if __name__ == "__main__":
     ax[2].axhline(7.9, ls="--", c="crimson", label="bell alone fires B")
     ax[2].set(title="Pavlov: bell + food trials", xlabel="trial", ylabel="bell → B weight"); ax[2].legend()
 
+    print("Summation, w=5:  A input 2 →", run_synapse(2, 5), "  A input 3 →", run_synapse(3, 5))
+    print("Inhibition: B alone at 1.8 →", run_synapse(0, 0, 1.8), "  with w=-6, A at 3 →", run_synapse(3, -6, 1.8))
     print("Weight after each trial:", np.round(w_hist, 2))
     plt.show()
