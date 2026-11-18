@@ -79,27 +79,32 @@ export class Scope {
 }
 
 // Static x–y line chart (for curves such as firing rate vs input).
-export function xyPlot(canvas, { height = 220, series, xLabel, yLabel, xMax, yMax, marker }) {
+export function xyPlot(canvas, { height = 220, series, xLabel, yLabel, xMin = 0, xMax, yMin = 0, yMax, marker }) {
   const { ctx, w, h } = fitCanvas(canvas, height);
   const L = 44, R = 10, T = 10, B = 30;
   const pw = w - L - R, ph = h - T - B;
-  const X = (v) => L + (pw * v) / xMax, Y = (v) => T + ph * (1 - v / yMax);
+  const clampY = (v) => Math.max(yMin, Math.min(yMax, v));
+  const X = (v) => L + (pw * (v - xMin)) / (xMax - xMin), Y = (v) => T + ph * (1 - (clampY(v) - yMin) / (yMax - yMin));
+  const fmt = (v) => (Math.abs(v) < 1e-9 ? "0" : (v < 0 ? "−" : "") + +Math.abs(v).toFixed(1));
   ctx.clearRect(0, 0, w, h);
   ctx.font = "12px -apple-system, system-ui, sans-serif"; ctx.lineWidth = 1;
-  const ys = niceStep(yMax / 4), xs = niceStep(xMax / 5);
-  ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--label-2");
-  for (let v = 0; v <= yMax + 1e-9; v += ys) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(w - R, Y(v)); ctx.stroke(); ctx.fillText(String(+v.toFixed(1)), 4, Y(v) + 4); }
-  for (let v = 0; v <= xMax + 1e-9; v += xs) ctx.fillText(String(+v.toFixed(1)), X(v) - 6, h - 14);
+  const ys = niceStep((yMax - yMin) / 4), xs = niceStep((xMax - xMin) / 5);
+  ctx.fillStyle = css("--label-2");
+  for (let v = Math.ceil(yMin / ys) * ys; v <= yMax + 1e-9; v += ys) {
+    ctx.strokeStyle = css(Math.abs(v) < 1e-9 && yMin < 0 ? "--sep" : "--grid");
+    ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(w - R, Y(v)); ctx.stroke(); ctx.fillText(fmt(v), 4, Y(v) + 4);
+  }
+  for (let v = Math.ceil(xMin / xs) * xs; v <= xMax + 1e-9; v += xs) ctx.fillText(fmt(v), X(v) - 6, h - 14);
   ctx.fillText(xLabel, w - R - ctx.measureText(xLabel).width, h - 2);
   ctx.fillText(yLabel, L + 4, T + 10);
   for (const s of series) {
     ctx.strokeStyle = css(s.color); ctx.lineWidth = 2; ctx.setLineDash(s.dash || []); ctx.beginPath();
-    s.points.forEach(([a, b], i) => (i ? ctx.lineTo(X(a), Y(Math.min(b, yMax))) : ctx.moveTo(X(a), Y(Math.min(b, yMax)))));
+    s.points.forEach(([a, b], i) => (i ? ctx.lineTo(X(a), Y(b)) : ctx.moveTo(X(a), Y(b))));
     ctx.stroke(); ctx.setLineDash([]);
   }
   if (marker) {
     ctx.fillStyle = css(marker.color); ctx.strokeStyle = css("--card"); ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.arc(X(marker.x), Y(Math.min(marker.y, yMax)), 6, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(X(marker.x), Y(marker.y), 6, 0, 7); ctx.fill(); ctx.stroke();
   }
 }
 

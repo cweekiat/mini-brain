@@ -4,8 +4,8 @@
 export const LEVELS = ["Cellular", "Circuits", "Whole brain"];
 
 export const STEPS = [
-  { n: 1, slug: "01-neuron", title: "One neuron", sub: "How a cell fires a spike", level: "Cellular", ready: true, neurons: 1 },
-  { n: 2, slug: "02-synapse", title: "Two neurons that learn", sub: "Fire together, wire together", level: "Cellular", ready: false, neurons: 2 },
+  { n: 1, slug: "01-neuron", title: "One neuron", sub: "How a cell fires a spike", level: "Cellular", ready: true, neurons: 1, synapses: 0 },
+  { n: 2, slug: "02-synapse", title: "Two neurons that learn", sub: "Fire together, wire together", level: "Cellular", ready: true, neurons: 2, synapses: 1 },
   { n: 3, slug: "03-brain-waves", title: "Brain waves", sub: "Rhythms with no conductor", level: "Circuits", ready: false, neurons: 1000 },
   { n: 4, slug: "04-memory", title: "Memory recall", sub: "Half a cue, the whole memory", level: "Circuits", ready: false, neurons: 400 },
   { n: 5, slug: "05-working-memory", title: "Working memory", sub: "Holding a thought", level: "Circuits", ready: false, neurons: 1000 },

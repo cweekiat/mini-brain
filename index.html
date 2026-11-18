@@ -72,7 +72,7 @@ document.getElementById("road").innerHTML = LEVELS.map((lvl) => `
 const biggest = Math.max(0, ...built.map((s) => s.neurons));
 const rows = [
   ["Neurons", "86 billion", `${biggest.toLocaleString()} so far`],
-  ["Connections", "100 trillion", "None yet (Step 2)"],
+  ["Connections", "100 trillion", built.some((s) => s.synapses) ? `${Math.max(...built.map((s) => s.synapses || 0))} learning synapse so far` : "None yet"],
   ["Brain jobs", "Seeing, moving, remembering, deciding, language…", `${built.length} of ${STEPS.length} built`],
   ["Power", "About 20 W", "About 20 W too, for a tiny fraction of the neurons"],
 ];
