@@ -2,289 +2,386 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Step 1 · One neuron · Mini Brain</title>
-<meta name="description" content="Build one artificial neuron: the leaky bucket model and the real Hodgkin–Huxley ion channels, with live demos.">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%232a78d6'/><path d='M20 55 L40 55 L48 20 L56 80 L62 55 L80 55' stroke='white' stroke-width='7' fill='none' stroke-linejoin='round'/></svg>">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>One neuron · Mini Brain</title>
+<meta name="description" content="Step 1: how a single neuron turns input into spikes. Live leaky-bucket and Hodgkin–Huxley demos.">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M18 56h20l8-30 9 48 7-18h20' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
 <link rel="stylesheet" href="../assets/style.css">
 <style>
-  .bucket-row { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; align-items: stretch; }
-  .bucket { position: relative; border: 2px solid var(--ink-3); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; height: 220px; }
-  .bucket .water { position: absolute; left: 0; right: 0; bottom: 0; background: var(--accent); opacity: 0.75; transition: height 40ms linear; }
-  .bucket .brim { position: absolute; left: -2px; right: -2px; top: 0; border-top: 2px dashed var(--real); }
-  .bucket.flash { box-shadow: 0 0 0 4px var(--accent); }
-  .bucket-cap { font-size: 11px; color: var(--ink-3); text-align: center; margin-top: 4px; }
-  @media (max-width: 480px) { .bucket-row { grid-template-columns: 40px minmax(0, 1fr); } }
+  .bucket-row { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
+  .bucket { position: relative; height: 220px; border: 2px solid var(--label-2); border-top: 0; border-radius: 0 0 12px 12px; overflow: hidden; }
+  .bucket .water { position: absolute; inset: auto 0 0 0; background: var(--accent); opacity: 0.8; }
+  .bucket .brim { position: absolute; inset: 0 -2px auto -2px; border-top: 2px dashed var(--real); }
+  .bucket.fired { border-color: var(--accent); }
+  .cap { font-size: 0.75rem; color: var(--label-2); text-align: center; margin-top: 4px; }
 </style>
 </head>
 <body>
-<header class="top"><div class="wrap">
-  <a class="brand" href="../index.html">Mini<span>Brain</span></a>
-  <nav class="steps-nav" id="nav" aria-label="Steps"></nav>
+<a class="skip" href="#main">Skip to content</a>
+<header class="navbar"><div class="wrap">
+  <a class="back" href="../index.html#roadmap">Roadmap</a>
+  <span class="meta">Step 1 of 12</span>
 </div></header>
 
-<main class="wrap">
-  <div class="kicker">Step 1 · Cellular level</div>
+<main class="wrap" id="main">
+  <p class="eyebrow">Step 1 · Cellular</p>
   <h1>One neuron</h1>
-  <p class="lede">Everything the brain does, from seeing to remembering to deciding, is built from one trick, repeated 86 billion times. This step builds that trick.</p>
+  <p class="lede">How a single brain cell turns input into spikes.</p>
 
-  <h2>The big idea</h2>
-  <p class="analogy">A neuron is a <b>leaky bucket</b>. Inputs pour water in, and a small hole lets it drain out. If water pours in faster than it leaks, the level rises until it hits the brim, and then the bucket <b>tips over</b>: that's a spike. It empties, and the filling starts again.</p>
-  <p>Three things follow from that one picture, and all three are true of real neurons:</p>
-  <ul>
-    <li><b>All or nothing.</b> A bucket either tips or it doesn't. A spike is always the same size. A stronger input doesn't make a bigger spike, it makes <i>more</i> spikes.</li>
-    <li><b>Weak inputs are forgotten.</b> A trickle drains away as fast as it arrives and never reaches the brim. The neuron ignores it.</li>
-    <li><b>Strength becomes rhythm.</b> The harder you pour, the faster it fills and the more often it tips. The brain encodes “how much” as “how often”.</li>
-  </ul>
-
-  <h2>Demo 1 · The leaky bucket</h2>
-  <div class="demo" id="lif-demo">
-    <div class="demo-head"><h3>Leaky integrate-and-fire neuron</h3><span class="live">Live · slowed down 4×</span></div>
-    <div class="bucket-row">
-      <div><div class="bucket" id="bucket"><div class="water" id="water"></div><div class="brim"></div></div><div class="bucket-cap">bucket</div></div>
-      <canvas class="plot" id="lif-scope" aria-label="Live membrane voltage of the leaky bucket neuron"></canvas>
-    </div>
-    <div class="legend"><span><i style="background:var(--accent)"></i>voltage (the water level)</span><span><i style="background:var(--real)"></i>threshold (the brim)</span><span>ticks on top = spikes</span></div>
-    <div class="stats">
-      <span class="stat">Firing rate<b id="lif-rate">0 Hz</b></span>
-      <span class="stat">Spikes<b id="lif-count">0</b></span>
-      <span class="stat">Voltage<b id="lif-v">-70 mV</b></span>
-    </div>
-    <div class="controls">
-      <div class="ctrl"><label for="lif-I">Input (water pouring in) <output for="lif-I"></output></label><input type="range" id="lif-I" min="0" max="5" step="0.05" value="1.2"><small>Current from other neurons, in nanoamps</small></div>
-      <div class="ctrl"><label for="lif-tau">Leak speed (time constant) <output for="lif-tau"></output></label><input type="range" id="lif-tau" min="3" max="50" step="1" value="15"><small>Small = drains fast, forgets quickly. Large = slow drain, long memory.</small></div>
-      <div class="ctrl"><label for="lif-th">Brim height (threshold) <output for="lif-th"></output></label><input type="range" id="lif-th" min="-65" max="-40" step="1" value="-55"><small>How full before it tips</small></div>
-      <div class="ctrl"><label for="lif-noise">Noise <output for="lif-noise"></output></label><input type="range" id="lif-noise" min="0" max="3" step="0.1" value="0"><small>Random jostling, like real synaptic chatter</small></div>
-    </div>
-    <div class="btns">
-      <button class="primary" id="lif-zap">⚡ Zap (short strong pulse)</button>
-      <button id="lif-pause">Pause</button>
-    </div>
+  <div class="card">
+    <h3>You'll learn</h3>
+    <ul class="goals">
+      <li>Why a spike is all-or-nothing</li>
+      <li>How sodium and potassium channels make a spike</li>
+      <li>How neurons encode “how much” as “how often”</li>
+      <li>How to code each of these in a few lines</li>
+    </ul>
   </div>
 
-  <h3>Try this</h3>
-  <ol class="try">
-    <li>Input at <b>1.2</b>. The level rises and stalls below the brim. <b>No spikes:</b> the trickle leaks out as fast as it comes in. Press Zap and watch one pulse push it over.</li>
-    <li>Slowly raise the input. Find the exact point where it starts firing (about <b>1.5 nA</b>). Below that, nothing at all. That is the <b>threshold</b>.</li>
-    <li>Keep raising it. The spikes get <i>closer together</i> but never taller. All or nothing.</li>
-    <li>Put input back to 1.2, then drag the leak speed up to 50. A slow leak lets small inputs add up, so the same trickle now fires. Real neurons tune this.</li>
-    <li>Set input to 1.3 and noise to 2. It fires now and then, at random. Real neurons in your cortex look exactly like this.</li>
-  </ol>
+  <h2>The idea</h2>
+  <div class="card">
+    <p class="idea">A neuron is a <b>leaky bucket</b>. Input fills it, a hole drains it. When it reaches the brim, it tips over: a <b>spike</b>.</p>
+    <ul>
+      <li><b>All or nothing.</b> Every spike is the same size.</li>
+      <li><b>Weak input fades.</b> It leaks out before reaching the brim.</li>
+      <li><b>Stronger input means more spikes</b>, not bigger ones.</li>
+    </ul>
+  </div>
 
-  <h2>What a real neuron actually is</h2>
-  <p>The bucket is a cartoon, so here's the real thing. A neuron is a cell wrapped in a thin fatty membrane. Inside there's more potassium, outside more sodium. That imbalance makes the inside sit at about <b>−70 millivolts</b> compared with the outside: the “empty bucket”.</p>
-  <p>The membrane is studded with tiny protein doors called <b>ion channels</b>. Two kinds make the spike:</p>
-  <ul>
-    <li><span style="color:var(--na);font-weight:600">Sodium (Na⁺) channels</span> open when the voltage rises a little. Sodium rushes <i>in</i>, which raises the voltage more, which opens more channels. This chain reaction is the spike shooting up to about +40 mV.</li>
-    <li><span style="color:var(--k);font-weight:600">Potassium (K⁺) channels</span> open a moment later. Potassium flows <i>out</i> and drags the voltage back down, even a little below rest. Meanwhile the sodium channels jam shut for a millisecond or two, so the neuron <i>can't</i> fire again straight away (the <b>refractory period</b>).</li>
-  </ul>
-  <p>In 1952, Alan Hodgkin and Andrew Huxley measured these currents in a squid's giant nerve fibre and wrote equations that reproduce the spike precisely. They won the Nobel Prize for it. Demo 2 runs those exact equations.</p>
-
-  <h2>Demo 2 · The real ion channels</h2>
-  <div class="demo">
-    <div class="demo-head"><h3>Hodgkin–Huxley neuron</h3><span class="live">Live · slowed down ~30× · shows the last 100 ms</span></div>
-    <canvas class="plot" id="hh-scope" aria-label="Live membrane voltage of the Hodgkin–Huxley neuron"></canvas>
-    <div class="legend"><span><i style="background:var(--accent)"></i>voltage (mV)</span></div>
-    <canvas class="plot" id="hh-cur" aria-label="Live sodium and potassium currents" style="margin-top:8px"></canvas>
-    <div class="legend"><span><i style="background:var(--na)"></i>sodium flowing in (drives the spike up)</span><span><i style="background:var(--k)"></i>potassium flowing out (pulls it back down)</span></div>
+  <h2>Demo 1 · Leaky bucket</h2>
+  <section class="card" aria-labelledby="d1">
+    <div class="demo-head"><h3 id="d1">Leaky integrate-and-fire neuron</h3><span class="speed">Slowed 4×</span></div>
+    <div class="bucket-row">
+      <div aria-hidden="true"><div class="bucket" id="bucket"><div class="water" id="water"></div><div class="brim"></div></div><div class="cap">Bucket</div></div>
+      <canvas class="plot" id="lif-scope" role="img" aria-label="Live voltage trace of the leaky bucket neuron"></canvas>
+    </div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Voltage</span><span><i class="dash"></i>Threshold</span><span>Ticks on top = spikes</span></div>
     <div class="stats">
-      <span class="stat">Firing rate<b id="hh-rate">0 Hz</b></span>
-      <span class="stat">Highest voltage (last 25 ms)<b id="hh-peak">–</b></span>
+      <span class="stat">Firing rate<b id="lif-rate">0 Hz</b></span>
+      <span class="stat">Voltage<b id="lif-v">−70 mV</b></span>
+      <span class="stat">Spikes<b id="lif-count">0</b></span>
     </div>
     <div class="controls">
-      <div class="ctrl"><label for="hh-I">Steady input <output for="hh-I"></output></label><input type="range" id="hh-I" min="0" max="20" step="0.1" value="0"><small>µA/cm² of current injected</small></div>
+      <div class="ctrl"><label for="lif-I">Input <output for="lif-I"></output></label><input type="range" id="lif-I" min="0" max="5" step="0.05" value="1.2"><p class="hint">Water pouring in</p></div>
+      <div class="ctrl"><label for="lif-tau">Leak time <output for="lif-tau"></output></label><input type="range" id="lif-tau" min="3" max="50" step="1" value="15"><p class="hint">Longer = drains slower</p></div>
+      <div class="ctrl"><label for="lif-th">Threshold <output for="lif-th"></output></label><input type="range" id="lif-th" min="-65" max="-40" step="1" value="-55"><p class="hint">Height of the brim</p></div>
+      <div class="ctrl"><label for="lif-noise">Noise <output for="lif-noise"></output></label><input type="range" id="lif-noise" min="0" max="3" step="0.1" value="0"><p class="hint">Random jostling</p></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="lif-zap">Zap</button>
+      <button id="lif-pause">Pause</button>
+    </div>
+  </section>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Leave input at 1.2. Press <b>Zap</b>.<span class="see">The level stalls below the brim. One zap pushes it over.</span></span></li>
+      <li><span>Raise input slowly until it fires.<span class="see">Nothing below ~1.5, then spikes. That's the threshold.</span></span></li>
+      <li><span>Keep raising input.<span class="see">Spikes come faster but never get taller.</span></span></li>
+      <li><span>Input 1.3, noise 2.<span class="see">Random, irregular firing, just like real cortex.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>The real neuron</h2>
+  <div class="card">
+    <p>A neuron sits at about <b>−70 mV</b> inside. Tiny doors in its membrane, called <b>ion channels</b>, make the spike:</p>
+    <ul>
+      <li><b style="color:var(--na)">Sodium flows in.</b> Voltage shoots up to about +40 mV.</li>
+      <li><b style="color:var(--k)">Potassium flows out.</b> Voltage falls back down.</li>
+      <li><b>Sodium doors jam shut</b> for 1–2 ms, so it can't fire again straight away.</li>
+    </ul>
+    <p class="sub">Hodgkin and Huxley wrote these equations in 1952 from a squid's nerve, and won a Nobel Prize. Demo 2 runs them.</p>
+  </div>
+
+  <h2>Demo 2 · Real ion channels</h2>
+  <section class="card" aria-labelledby="d2">
+    <div class="demo-head"><h3 id="d2">Hodgkin–Huxley neuron</h3><span class="speed">Slowed 30× · last 100 ms</span></div>
+    <canvas class="plot" id="hh-scope" role="img" aria-label="Live voltage trace of the Hodgkin–Huxley neuron"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Voltage</span></div>
+    <canvas class="plot" id="hh-cur" role="img" aria-label="Live sodium and potassium currents" style="margin-top:8px"></canvas>
+    <div class="legend"><span><i style="background:var(--na)"></i>Sodium in (above zero)</span><span><i style="background:var(--k)"></i>Potassium out (below zero)</span></div>
+    <div class="stats">
+      <span class="stat">Firing rate<b id="hh-rate">0 Hz</b></span>
+      <span class="stat">Peak voltage<b id="hh-peak">−65 mV</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="hh-I">Steady input <output for="hh-I"></output></label><input type="range" id="hh-I" min="0" max="20" step="0.1" value="0"><p class="hint">Current injected (µA/cm²)</p></div>
       <div>
-        <label class="check"><input type="checkbox" id="hh-na"> <span><b>Block sodium channels</b> (like the lidocaine your dentist uses)</span></label>
-        <label class="check" style="margin-top:6px"><input type="checkbox" id="hh-k"> <span><b>Block 80% of potassium channels</b> (like the toxin TEA)</span></label>
+        <label class="toggle"><input type="checkbox" id="hh-na"> Block sodium (like lidocaine)</label>
+        <label class="toggle"><input type="checkbox" id="hh-k"> Block potassium (like TEA)</label>
       </div>
     </div>
     <div class="btns">
-      <button class="primary" id="hh-zap">⚡ Zap (1 ms pulse)</button>
-      <button id="hh-double">⚡⚡ Two zaps 4 ms apart</button>
+      <button class="primary" id="hh-zap">Zap</button>
+      <button id="hh-double">Zap Twice</button>
       <button id="hh-pause">Pause</button>
     </div>
+  </section>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Press <b>Zap</b>.<span class="see">Sodium surges first, then potassium pulls the voltage back.</span></span></li>
+      <li><span>Watch the end of the spike.<span class="see">It dips below rest before recovering. The bucket can't do this.</span></span></li>
+      <li><span>Press <b>Zap Twice</b>.<span class="see">The second zap does nothing. That's the refractory period.</span></span></li>
+      <li><span>Turn on <b>Block sodium</b>, then zap.<span class="see">No spike. This is how dental anaesthetic stops pain.</span></span></li>
+    </ol>
   </div>
 
-  <h3>Try this</h3>
-  <ol class="try">
-    <li>Press <b>Zap</b>. Watch the orange sodium current surge first, then the purple potassium current pull the voltage back down. That's the whole spike.</li>
-    <li>Look at the end of the spike. The voltage <b>dips below rest</b> before it recovers. Real neurons do this too (the “afterhyperpolarisation”). The bucket model can't.</li>
-    <li>Press <b>Two zaps</b>. The second zap arrives during the refractory period and does almost nothing. This is why a neuron can't fire more than a few hundred times a second.</li>
-    <li>Tick <b>block sodium</b> and zap. Nothing. No sodium, no spike, no signal. That's exactly how a local anaesthetic stops pain reaching your brain.</li>
-    <li>Tick <b>block potassium</b> instead and zap. The spike gets wider and slower to end. Without its brake, the neuron struggles to reset.</li>
-    <li>Raise the steady input slowly from 0. Notice it doesn't start at a slow rhythm: it jumps straight to about 60 spikes a second near 6–7 µA/cm². Squid axon neurons really behave this way. Demo 3 shows the difference.</li>
-  </ol>
-
-  <h2>Demo 3 · How strength becomes rhythm</h2>
-  <p>Each chart shows the <b>firing rate</b> (spikes per second) you'd get for every steady input. The dot follows the slider in the demo above it, so move those sliders and come back here.</p>
-  <div class="demo">
-    <div class="grid">
-      <div><h3 style="margin-top:0">Leaky bucket</h3><canvas class="plot" id="fi-lif" aria-label="Firing rate against input for the leaky bucket neuron"></canvas></div>
-      <div><h3 style="margin-top:0">Hodgkin–Huxley</h3><canvas class="plot" id="fi-hh" aria-label="Firing rate against input for the Hodgkin–Huxley neuron"></canvas></div>
+  <h2>Demo 3 · Strength becomes rhythm</h2>
+  <section class="card" aria-labelledby="d3">
+    <h3 id="d3">Firing rate vs input</h3>
+    <p class="sub">The red dot follows the input slider in each demo above.</p>
+    <div class="controls" style="margin-top:0">
+      <div><p class="foot" style="margin:0 0 4px">Leaky bucket</p><canvas class="plot" id="fi-lif" role="img" aria-label="Leaky bucket firing rate rises smoothly from zero once input passes about 1.5 nanoamps"></canvas></div>
+      <div><p class="foot" style="margin:0 0 4px">Hodgkin–Huxley</p><canvas class="plot" id="fi-hh" role="img" aria-label="Hodgkin–Huxley firing rate jumps from zero to about 60 spikes per second near 6 to 7 microamps"></canvas></div>
     </div>
-    <p class="muted" style="font-size:14px;margin-bottom:0">The bucket starts slowly and speeds up smoothly. The HH neuron is silent, then <i>jumps</i> straight to about 60 Hz. Neuroscientists call these Type 1 and Type 2 neurons, and the brain uses both. Type 1 is good at saying “how much”. Type 2 is good at keeping time.</p>
+    <p style="margin-top:0.75rem">The bucket <b>speeds up smoothly</b>. The real channels <b>jump</b> from silent to ~60 Hz. Brains use both kinds.</p>
+  </section>
+
+  <h2>How it's coded</h2>
+  <p class="sub">Each thing a real neuron does becomes a few lines of code. Simplified from <a href="https://github.com/cweekiat/mini-brain/blob/main/assets/sim/neuron.js">neuron.js</a>.</p>
+
+  <div class="card coded">
+    <p class="bio">BIOLOGY · Charge leaks out, input flows in</p>
+    <h3>1. Integrate</h3>
+<pre><code class="js">
+// every 0.1 ms step:
+// leak back to rest + fill from input
+V += (dt / tau) *
+     (-(V - V_rest) + R * input);
+</code></pre>
+    <p class="out">One line is the whole “leaky bucket”. <code>tau</code> is the Leak time slider.</p>
   </div>
 
-  <h2>Real neuron vs our artificial neuron</h2>
-  <div class="pair-scroll"><table class="pair">
-    <thead><tr><th>Feature</th><th><span class="tag real">Real neuron</span></th><th><span class="tag model">Our model</span></th></tr></thead>
-    <tbody>
-      <tr><td>Resting voltage</td><td>About −70 mV, kept by pumps that use about half your brain's energy</td><td>−70 mV (bucket) and −65 mV (HH). Pumps aren't modelled; rest is just a number.</td></tr>
-      <tr><td>Spike</td><td>About +40 mV peak, about 1 ms long</td><td>HH: about +40 mV, about 1 ms. ✓ Matches.<br>Bucket: no shape at all, just a tick mark.</td></tr>
-      <tr><td>Threshold</td><td>About −55 mV, emerges from sodium channels</td><td>HH: emerges the same way ✓<br>Bucket: we just declare the brim height</td></tr>
-      <tr><td>Refractory period</td><td>About 1–2 ms when it can't fire</td><td>HH: emerges from sodium channels jamming ✓<br>Bucket: a 2 ms timer we add by hand</td></tr>
-      <tr><td>Firing rate</td><td>Typically 0.1–50 Hz in cortex; can burst to a few hundred</td><td>0 to about 100+ Hz, depending on input ✓</td></tr>
-      <tr><td>Shape</td><td>A tree: thousands of dendrite branches, one long axon (up to a metre)</td><td>A single point. No shape at all. <i>Biggest simplification.</i></td></tr>
-      <tr><td>Inputs</td><td>About 7,000 synapses, each releasing chemicals</td><td>One current slider (that's you). Synapses arrive in Step 2.</td></tr>
-      <tr><td>Cost to compute</td><td>About a billionth of a watt</td><td>Bucket: about 3 lines of maths per step. HH: about 30. That's why big networks use the bucket.</td></tr>
-    </tbody>
-  </table></div>
+  <div class="card coded">
+    <p class="bio">BIOLOGY · A spike is all-or-nothing</p>
+    <h3>2. Fire and reset</h3>
+<pre><code class="js">
+// reached the brim?
+if (V >= threshold) {
+  spikes.push(t); // same every time
+  V = V_reset;    // empty the bucket
+}
+</code></pre>
+    <p class="out">A spike is just a timestamp. Size never changes, only timing.</p>
+  </div>
 
-  <h3>What we left out (on purpose)</h3>
-  <ul class="muted">
-    <li><b>Dendrites.</b> Real branches do their own mini-computations before signals even reach the cell body. Some researchers think one real neuron is as smart as a small artificial neural network.</li>
-    <li><b>The dozens of other ion channel types</b> (calcium, slow potassium…). These give real neurons habits like bursting and getting tired.</li>
-    <li><b>Chemistry and energy.</b> Neurotransmitters, ion pumps, blood supply.</li>
-  </ul>
-  <p>The rule this project follows: <b>keep only the detail the function needs.</b> For brain waves, memory and decisions, the bucket is enough, so from Step 3 on we'll use it to fit thousands of neurons on a laptop.</p>
+  <div class="card coded">
+    <p class="bio">BIOLOGY · It can't fire again for ~2 ms</p>
+    <h3>3. Refractory period</h3>
+<pre><code class="js">
+// fired very recently?
+if (refractoryLeft > 0) {
+  refractoryLeft -= dt; // countdown
+  return;               // ignore input
+}
+</code></pre>
+    <p class="out">A countdown timer. This caps the firing rate at a few hundred Hz.</p>
+  </div>
 
-  <h2>The code</h2>
-  <p>The whole bucket neuron is about ten lines. From <code>assets/sim/neuron.js</code>:</p>
-<pre>step(dt, I) {
-  if (this.refLeft &gt; 0) {               // just fired? stay silent
-    this.refLeft -= dt; this.V = this.Vreset; return false;
-  }
-  // leak back toward rest + fill from the input
-  this.V += (dt / this.tau) * (-(this.V - this.EL) + this.R * I);
-  if (this.V &gt;= this.Vth) {             // reached the brim?
-    this.V = this.Vreset;               // tip over and empty
-    this.refLeft = this.tRef;           // start the silent period
-    return true;                        // SPIKE
-  }
-  return false;
-}</pre>
-  <details><summary>The equation, in plain words</summary>
-    <p><code>τ · dV/dt = −(V − E<sub>L</sub>) + R · I</code></p>
-    <p>“How fast the level changes” = “leak back toward rest” + “fill from input”. <code>τ</code> (tau) sets how quickly both happen. When <code>V</code> passes the threshold, record a spike and reset. Every step, the computer nudges <code>V</code> forward by a tiny slice of time (<code>dt</code> = 0.1 ms). That's called <i>numerical integration</i>, and it's how every brain simulator works.</p>
-    <p>The steady level the bucket settles at is <code>E<sub>L</sub> + R·I</code>. It reaches the brim when <code>R·I</code> = 15 mV, so <code>I</code> = 1.5 nA. That's the threshold you found by hand in “Try this”.</p>
+  <div class="card coded">
+    <p class="bio">BIOLOGY · Sodium doors open as voltage rises</p>
+    <h3>4. Ion channel gates</h3>
+<pre><code class="js">
+// m = share of sodium gates open (0–1)
+m += dt * (open(V) * (1 - m)
+         - close(V) * m);
+// more open gates, more sodium in
+I_Na = g_Na * m**3 * h * (V - E_Na);
+</code></pre>
+    <p class="out">Higher V opens more gates, which lets in more sodium, which raises V. This loop is the spike in Demo 2.</p>
+  </div>
+
+  <div class="card coded">
+    <p class="bio">BIOLOGY · Lidocaine blocks sodium channels</p>
+    <h3>5. A drug is one number</h3>
+<pre><code class="js">
+// block = 1 → I_Na = 0 → no spike
+I_Na = g_Na * (1 - block)
+     * m**3 * h * (V - E_Na);
+</code></pre>
+    <p class="out">The “Block sodium” switch in Demo 2 sets <code>block</code> to 1.</p>
+  </div>
+
+  <div class="card coded">
+    <p class="bio">BIOLOGY · Stronger input, more spikes per second</p>
+    <h3>6. Rate coding</h3>
+<pre><code class="js">
+function firingRate(input) {
+  let count = 0;
+  // simulate 1 second, count spikes
+  for (let t = 0; t < 1000; t += dt)
+    if (neuron.step(dt, input))
+      count++;
+  return count; // spikes/s (Hz)
+}
+</code></pre>
+    <p class="out">Run this for every input level and you get the curves in Demo 3.</p>
+  </div>
+
+  <h2>Real vs our model</h2>
+  <div class="card vs">
+    <div class="item"><h3>Spike</h3><div class="pair"><div class="r"><span>Real</span>+40 mV, ~1 ms</div><div class="m"><span>Our model</span>Same in Demo 2. Just a tick in Demo 1.</div></div></div>
+    <div class="item"><h3>Threshold</h3><div class="pair"><div class="r"><span>Real</span>~−55 mV, set by sodium channels</div><div class="m"><span>Our model</span>Emerges in Demo 2. A fixed number in Demo 1.</div></div></div>
+    <div class="item"><h3>Refractory period</h3><div class="pair"><div class="r"><span>Real</span>1–2 ms</div><div class="m"><span>Our model</span>Emerges in Demo 2. A 2 ms timer in Demo 1.</div></div></div>
+    <div class="item"><h3>Shape</h3><div class="pair"><div class="r"><span>Real</span>A tree of branches, up to 1 m long</div><div class="m"><span>Our model</span>A single point. The biggest simplification.</div></div></div>
+    <div class="item"><h3>Inputs</h3><div class="pair"><div class="r"><span>Real</span>~7,000 synapses</div><div class="m"><span>Our model</span>One slider. Synapses come in Step 2.</div></div></div>
+  </div>
+
+  <details>
+    <summary>Why use the simpler bucket?</summary>
+    <div class="inner">
+      <p>The bucket costs about 3 sums per time step. Real channels cost about 30. For circuits of thousands of neurons (Step 3 onward), the bucket keeps a laptop fast enough.</p>
+      <p class="sub">Left out on purpose: dendrite branches, dozens of other channel types, neurotransmitters, energy use.</p>
+    </div>
   </details>
 
-  <h2>Quick check</h2>
-  <div class="quiz" id="quiz"></div>
-
-  <div class="card" style="margin-top:32px">
-    <label class="check" style="font-size:16px;color:var(--ink)"><input type="checkbox" id="done"> <span><b>I've finished Step 1.</b> Mark it done on the roadmap.</span></label>
+  <h2>Key terms</h2>
+  <div class="card">
+    <dl class="terms">
+      <div><dt>Membrane potential</dt><dd>Voltage inside the cell compared with outside.</dd></div>
+      <div><dt>Resting potential</dt><dd>About −70 mV when the neuron is quiet.</dd></div>
+      <div><dt>Threshold</dt><dd>The voltage where a spike becomes unstoppable.</dd></div>
+      <div><dt>Action potential (spike)</dt><dd>A 1 ms all-or-nothing voltage pulse.</dd></div>
+      <div><dt>Ion channel</dt><dd>A protein door that lets one kind of ion through.</dd></div>
+      <div><dt>Refractory period</dt><dd>The short time after a spike when it can't fire.</dd></div>
+      <div><dt>Firing rate</dt><dd>Spikes per second (Hz). Encodes input strength.</dd></div>
+    </dl>
   </div>
 
-  <div class="next">
-    <a href="../index.html#roadmap">← Roadmap</a>
-    <span class="muted">Next: Step 2 · Two neurons that learn (coming soon)</span>
+  <details>
+    <summary>Go deeper: the equation</summary>
+    <div class="inner">
+      <p><code>τ·dV/dt = −(V − E<sub>L</sub>) + R·I</code></p>
+      <p class="sub">Change in voltage = leak toward rest + input. The bucket settles at E<sub>L</sub> + R·I, so it fires when R·I &gt; 15 mV, which is I &gt; 1.5 nA. That's the threshold you found in Demo 1.</p>
+      <p class="sub">Computers can't do smooth time, so they take tiny steps (dt = 0.1 ms) and nudge V each step. This is called <b>Euler integration</b>, and it's how most brain simulators work.</p>
+    </div>
+  </details>
+
+  <h2>Check yourself</h2>
+  <div class="card" id="quiz"></div>
+
+  <div class="card">
+    <label class="toggle" style="font-size:1.0625rem"><input type="checkbox" id="done"> Mark Step 1 as done</label>
   </div>
+
+  <nav class="pager" aria-label="Steps">
+    <a href="../index.html#roadmap"><small>Back</small>Roadmap</a>
+    <span class="next"><small>Next · Coming soon</small>Two neurons that learn</span>
+  </nav>
 </main>
 
-<footer><div class="wrap">Mini Brain · Step 1 · Hodgkin–Huxley parameters from Hodgkin &amp; Huxley (1952), J. Physiol. 117:500</div></footer>
+<footer><div class="wrap foot">Hodgkin–Huxley parameters: Hodgkin &amp; Huxley (1952), J. Physiol. 117:500.</div></footer>
 
 <script type="module">
 import { LIF, HH, rateOf } from "../assets/sim/neuron.js";
 import { Scope, xyPlot, slider } from "../assets/plot.js";
-import { navInto, isDone, setDone } from "../assets/steps.js";
+import { isDone, setDone } from "../assets/steps.js";
+import { highlight } from "../assets/code.js";
+highlight();
 
-navInto(document.getElementById("nav"), 1, "../");
-let lifFI = [], hhFI = []; // firing-rate curves for Demo 3, filled in below
+let lifFI = [], hhFI = []; // firing-rate curves for Demo 3
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = (id) => document.getElementById(id);
+const mv = (v) => (v < 0 ? "−" : "+") + Math.abs(Math.round(v)) + " mV";
+
+// Firing rate from the gaps between the last few spikes; 0 once it goes quiet.
+function rateFrom(times, now) {
+  if (times.length < 2) return 0;
+  const r = times.slice(-5), isi = (r.at(-1) - r[0]) / (r.length - 1);
+  return now - r.at(-1) > Math.max(2 * isi, 30) ? 0 : Math.round(1000 / isi);
+}
+function gauss() { return Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()); }
+
+// Play/Pause toggle. With Reduce Motion on, demos start paused.
+function playToggle(id) {
+  const btn = $(id), state = { paused: reduceMotion };
+  const label = () => (btn.textContent = state.paused ? "Play" : "Pause");
+  btn.onclick = () => { state.paused = !state.paused; label(); };
+  label();
+  return state;
+}
 
 // ── Demo 1: leaky bucket ─────────────────────────────────────────────
 const lif = new LIF();
-let lifI = 0, lifNoise = 0, lifZap = 0, lifPaused = false, lifCount = 0, lifRecent = [], lifT = 0;
-const lifScope = new Scope(document.getElementById("lif-scope"), {
-  yMin: -80, yMax: -35, yLabel: "mV", window: 1000,
-  lines: [{ color: "--accent" }],
-  hlines: [{ value: () => lif.Vth, color: "--real", label: "brim (threshold)" }],
+let lifI = 0, lifNoise = 0, lifZap = 0, lifCount = 0, lifRecent = [], lifT = 0;
+const lifRun = playToggle("lif-pause");
+const lifScope = new Scope($("lif-scope"), {
+  yMin: -80, yMax: -35, yLabel: "mV", window: 1000, lines: [{ color: "--accent" }],
+  hlines: [{ value: () => lif.Vth, color: "--real", label: "threshold" }],
 });
-const getI = slider("lif-I", (v) => v.toFixed(2) + " nA", (v) => { lifI = v; drawFI(); });
+slider("lif-I", (v) => v.toFixed(2) + " nA", (v) => { lifI = v; drawFI(); });
 slider("lif-tau", (v) => v + " ms", (v) => { lif.tau = v; computeLifFI(); });
-slider("lif-th", (v) => v + " mV", (v) => { lif.Vth = v; computeLifFI(); });
+slider("lif-th", (v) => mv(v), (v) => { lif.Vth = v; computeLifFI(); });
 slider("lif-noise", (v) => v.toFixed(1), (v) => (lifNoise = v));
-document.getElementById("lif-zap").onclick = () => (lifZap = 5);
-document.getElementById("lif-pause").onclick = (e) => { lifPaused = !lifPaused; e.target.textContent = lifPaused ? "Resume" : "Pause"; };
-const water = document.getElementById("water"), bucket = document.getElementById("bucket");
-
-// Firing rate from the gaps between the last few spikes, so it reacts quickly
-// even when the demo runs slowed down. Falls to 0 once the neuron goes quiet.
-function rateFrom(times, now) {
-  if (times.length < 2) return 0;
-  const recent = times.slice(-5), isi = (recent.at(-1) - recent[0]) / (recent.length - 1);
-  return now - recent.at(-1) > Math.max(2 * isi, 30) ? 0 : Math.round(1000 / isi);
-}
-
-function gauss() { return Math.sqrt(-2 * Math.log(1 - Math.random())) * Math.cos(2 * Math.PI * Math.random()); }
+$("lif-zap").onclick = () => { lifZap = 5; if (lifRun.paused) $("lif-pause").click(); };
+const water = $("water"), bucket = $("bucket");
 
 function lifFrame() {
-  // 4 ms of brain time per animation frame, in 0.1 ms steps, so ~4x slower than real time
-  for (let k = 0; k < 40; k++) {
+  for (let k = 0; k < 40; k++) { // 4 ms of brain time per frame
     const dt = 0.1;
     const I = lifI + (lifZap > 0 ? 3 : 0) + lifNoise * gauss() * 1.5;
     if (lifZap > 0) lifZap -= dt;
     const s = lif.step(dt, I);
     lifT += dt;
-    if (s) { lifCount++; lifRecent.push(lifT); bucket.classList.add("flash"); setTimeout(() => bucket.classList.remove("flash"), 80); }
+    if (s) { lifCount++; lifRecent.push(lifT); bucket.classList.add("fired"); setTimeout(() => bucket.classList.remove("fired"), 120); }
     if (k % 4 === 3) lifScope.push([s ? -35 : lif.V], s ? 1 : 0);
     else if (s) lifScope.push([-35], 1);
   }
   lifRecent = lifRecent.slice(-5);
   lifScope.draw();
-  const frac = Math.max(0, Math.min(1, (lif.V - lif.Vreset) / (lif.Vth - lif.Vreset)));
-  water.style.height = (frac * 100).toFixed(1) + "%";
-  document.getElementById("lif-rate").textContent = rateFrom(lifRecent, lifT) + " Hz";
-  document.getElementById("lif-count").textContent = lifCount;
-  document.getElementById("lif-v").textContent = lif.V.toFixed(0) + " mV";
+  water.style.height = (Math.max(0, Math.min(1, (lif.V - lif.Vreset) / (lif.Vth - lif.Vreset))) * 100).toFixed(1) + "%";
+  $("lif-rate").textContent = rateFrom(lifRecent, lifT) + " Hz";
+  $("lif-count").textContent = lifCount;
+  $("lif-v").textContent = mv(lif.V);
 }
 
 // ── Demo 2: Hodgkin–Huxley ───────────────────────────────────────────
 const hh = new HH();
-let hhI = 0, hhPulses = [], hhPaused = false, hhT = 0, hhRecent = [];
-let hhWinMax = -99, hhWinEnd = 25, hhPeakShown = -65; // highest voltage in each 25 ms window
-const hhScope = new Scope(document.getElementById("hh-scope"), {
+let hhI = 0, hhPulses = [], hhT = 0, hhRecent = [], hhWinMax = -99, hhWinEnd = 25, hhPeak = -65;
+const hhRun = playToggle("hh-pause");
+const hhScope = new Scope($("hh-scope"), {
   height: 200, yMin: -85, yMax: 50, yLabel: "mV", window: 1000, lines: [{ color: "--accent" }],
-  hlines: [{ value: -65, color: "--ink-3", label: "rest" }],
+  hlines: [{ value: -65, color: "--label-2", label: "rest" }],
 });
-const hhCur = new Scope(document.getElementById("hh-cur"), {
-  height: 130, yMin: -800, yMax: 800, yLabel: "µA/cm²", window: 1000,
-  lines: [{ color: "--na" }, { color: "--k" }],
+const hhCur = new Scope($("hh-cur"), {
+  height: 130, yMin: -800, yMax: 800, yLabel: "µA/cm²", window: 1000, lines: [{ color: "--na" }, { color: "--k" }],
 });
-slider("hh-I", (v) => v.toFixed(1) + " µA/cm²", (v) => { hhI = v; drawFI(); });
-document.getElementById("hh-na").onchange = (e) => { hh.naBlock = e.target.checked ? 1 : 0; };
-document.getElementById("hh-k").onchange = (e) => { hh.kBlock = e.target.checked ? 0.8 : 0; };
-document.getElementById("hh-zap").onclick = () => hhPulses.push([hhT + 1, hhT + 2]);
-document.getElementById("hh-double").onclick = () => hhPulses.push([hhT + 1, hhT + 2], [hhT + 5, hhT + 6]);
-document.getElementById("hh-pause").onclick = (e) => { hhPaused = !hhPaused; e.target.textContent = hhPaused ? "Resume" : "Pause"; };
+slider("hh-I", (v) => v.toFixed(1), (v) => { hhI = v; drawFI(); });
+$("hh-na").onchange = (e) => (hh.naBlock = e.target.checked ? 1 : 0);
+$("hh-k").onchange = (e) => (hh.kBlock = e.target.checked ? 0.8 : 0);
+const wake = () => { if (hhRun.paused) $("hh-pause").click(); };
+$("hh-zap").onclick = () => { hhPulses.push([hhT + 1, hhT + 2]); wake(); };
+$("hh-double").onclick = () => { hhPulses.push([hhT + 1, hhT + 2], [hhT + 5, hhT + 6]); wake(); };
 
 function hhFrame() {
-  // 0.5 ms of brain time per frame (≈30x slower than real time), dt = 0.01 ms
-  for (let k = 0; k < 50; k++) {
+  for (let k = 0; k < 50; k++) { // 0.5 ms of brain time per frame, dt = 0.01 ms
     const dt = 0.01;
     const pulse = hhPulses.some(([a, b]) => hhT >= a && hhT < b) ? 20 : 0;
     if (hh.step(dt, hhI + pulse)) hhRecent.push(hhT);
     hhWinMax = Math.max(hhWinMax, hh.V);
     hhT += dt;
-    if (hhT >= hhWinEnd) { hhPeakShown = hhWinMax; hhWinMax = -99; hhWinEnd = hhT + 25; }
-    if (k % 10 === 9) { hhScope.push([hh.V]); hhCur.push([-hh.INa, -hh.IK]); } // one sample per 0.1 ms
+    if (hhT >= hhWinEnd) { hhPeak = hhWinMax; hhWinMax = -99; hhWinEnd = hhT + 25; }
+    if (k % 10 === 9) { hhScope.push([hh.V]); hhCur.push([-hh.INa, -hh.IK]); }
   }
   hhPulses = hhPulses.filter(([, b]) => b > hhT);
   hhRecent = hhRecent.slice(-5);
   hhScope.draw(); hhCur.draw();
-  document.getElementById("hh-rate").textContent = rateFrom(hhRecent, hhT) + " Hz";
-  const p = Math.round(hhPeakShown);
-  document.getElementById("hh-peak").textContent = (p > 0 ? "+" : "") + p + " mV";
+  $("hh-rate").textContent = rateFrom(hhRecent, hhT) + " Hz";
+  $("hh-peak").textContent = mv(hhPeak);
 }
 
-function loop() {
-  if (!lifPaused) lifFrame();
-  if (!hhPaused) hhFrame();
+(function loop() {
+  if (!lifRun.paused) lifFrame();
+  if (!hhRun.paused) hhFrame();
   requestAnimationFrame(loop);
-}
-loop();
+})();
 
-// ── Demo 3: firing rate vs input curves ──────────────────────────────
+// ── Demo 3: firing rate vs input ─────────────────────────────────────
 function computeLifFI() {
   lifFI = [];
   for (let I = 0; I <= 5.0001; I += 0.1) lifFI.push([I, rateOf(LIF, I, { ms: 500, setup: (c) => { c.tau = lif.tau; c.Vth = lif.Vth; } })]);
@@ -295,45 +392,46 @@ function computeHhFI() {
   for (let I = 0; I <= 20.0001; I += 0.5) hhFI.push([I, rateOf(HH, I, { ms: 300, dt: 0.025 })]);
   drawFI();
 }
-function interp(curve, x) {
-  for (let i = 1; i < curve.length; i++) if (curve[i][0] >= x) {
-    const [x0, y0] = curve[i - 1], [x1, y1] = curve[i];
+function interp(c, x) {
+  for (let i = 1; i < c.length; i++) if (c[i][0] >= x) {
+    const [x0, y0] = c[i - 1], [x1, y1] = c[i];
     return y0 + ((y1 - y0) * (x - x0)) / (x1 - x0 || 1);
   }
-  return curve.length ? curve[curve.length - 1][1] : 0;
+  return c.length ? c.at(-1)[1] : 0;
 }
 function drawFI() {
-  if (lifFI.length) xyPlot(document.getElementById("fi-lif"), { height: 200, xMax: 5, yMax: 150, xLabel: "input (nA)", yLabel: "spikes/s",
+  if (lifFI.length) xyPlot($("fi-lif"), { height: 190, xMax: 5, yMax: 150, xLabel: "input (nA)", yLabel: "Hz",
     series: [{ points: lifFI, color: "--accent" }], marker: { x: lifI, y: interp(lifFI, lifI), color: "--real" } });
-  if (hhFI.length) xyPlot(document.getElementById("fi-hh"), { height: 200, xMax: 20, yMax: 150, xLabel: "input (µA/cm²)", yLabel: "spikes/s",
+  if (hhFI.length) xyPlot($("fi-hh"), { height: 190, xMax: 20, yMax: 150, xLabel: "input (µA/cm²)", yLabel: "Hz",
     series: [{ points: hhFI, color: "--accent" }], marker: { x: hhI, y: interp(hhFI, hhI), color: "--real" } });
 }
 computeLifFI();
 setTimeout(computeHhFI, 50);
 addEventListener("resize", drawFI);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawFI(); lifScope.draw(); hhScope.draw(); hhCur.draw(); });
 
 // ── Quiz ─────────────────────────────────────────────────────────────
 const QUIZ = [
-  { q: "You double the input to a neuron that's already firing. What happens to its spikes?",
-    o: ["They get twice as tall", "They come more often", "Nothing changes"], a: 1,
-    why: "All or nothing: spike size is fixed. The brain encodes strength as rate." },
-  { q: "Lidocaine blocks sodium channels. Why does that stop pain?",
-    o: ["It stops the spike's rising chain reaction, so no signal travels", "It makes neurons fire faster", "It removes potassium"], a: 0,
-    why: "No sodium rushing in means no spike. The pain nerve stays silent, as in Demo 2." },
-  { q: "In the bucket model, what does a slower leak (bigger τ) do?",
-    o: ["Neurons forget inputs faster", "Small inputs can add up over time and reach threshold", "Spikes become bigger"], a: 1,
-    why: "A slow drain gives the neuron a longer memory of recent inputs, so weak inputs can sum to a spike." },
+  { q: "You double the input to a firing neuron. Its spikes…", o: ["Get twice as tall", "Come more often", "Stay the same"], a: 1,
+    why: "Spikes are all-or-nothing. Strength is coded as rate." },
+  { q: "Why does blocking sodium channels stop pain?", o: ["No sodium, no spike, so no signal travels", "Neurons fire faster", "It removes potassium"], a: 0,
+    why: "The spike's rise needs sodium rushing in. You saw this in Demo 2." },
+  { q: "A longer leak time lets a neuron…", o: ["Forget input faster", "Add up small inputs until it fires", "Make bigger spikes"], a: 1,
+    why: "A slow drain gives the neuron a longer memory of recent input." },
 ];
-document.getElementById("quiz").innerHTML = QUIZ.map((x, i) => `
-  <div class="q card"><b>${i + 1}. ${x.q}</b><div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div><div class="why" id="why-${i}"></div></div>`).join("");
-document.getElementById("quiz").addEventListener("click", (e) => {
+$("quiz").innerHTML = QUIZ.map((x, i) => `
+  <div class="q" role="group" aria-labelledby="q${i}"><h3 id="q${i}">${i + 1}. ${x.q}</h3>
+  <div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div>
+  <p class="why" id="why-${i}" aria-live="polite"></p></div>`).join("");
+$("quiz").addEventListener("click", (e) => {
   const b = e.target.closest("button[data-q]"); if (!b) return;
   const x = QUIZ[+b.dataset.q], right = +b.dataset.o === x.a;
+  b.parentElement.querySelectorAll("button").forEach((o) => o.classList.remove("right", "wrong"));
   b.classList.add(right ? "right" : "wrong");
-  document.getElementById("why-" + b.dataset.q).textContent = (right ? "✓ Right. " : "Not quite. ") + x.why;
+  $("why-" + b.dataset.q).textContent = (right ? "✓ Correct. " : "✕ Not quite. ") + x.why;
 });
 
-const done = document.getElementById("done");
+const done = $("done");
 done.checked = isDone(1);
 done.onchange = () => setDone(1, done.checked);
 </script>

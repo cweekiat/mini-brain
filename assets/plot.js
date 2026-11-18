@@ -40,10 +40,10 @@ export class Scope {
     const pw = w - L - R, ph = h - T - B;
     const y = (v) => T + ph * (1 - (v - yMin) / (yMax - yMin));
     ctx.clearRect(0, 0, w, h);
-    ctx.font = "11px -apple-system, sans-serif";
+    ctx.font = "12px -apple-system, system-ui, sans-serif";
     // grid + y ticks
     const step = niceStep((yMax - yMin) / 4);
-    ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--ink-3"); ctx.lineWidth = 1;
+    ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--label-2"); ctx.lineWidth = 1;
     for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
       ctx.beginPath(); ctx.moveTo(L, y(v)); ctx.lineTo(w - R, y(v)); ctx.stroke();
       ctx.fillText(String(Math.round(v)), 4, y(v) + 4);
@@ -85,9 +85,9 @@ export function xyPlot(canvas, { height = 220, series, xLabel, yLabel, xMax, yMa
   const pw = w - L - R, ph = h - T - B;
   const X = (v) => L + (pw * v) / xMax, Y = (v) => T + ph * (1 - v / yMax);
   ctx.clearRect(0, 0, w, h);
-  ctx.font = "11px -apple-system, sans-serif"; ctx.lineWidth = 1;
+  ctx.font = "12px -apple-system, system-ui, sans-serif"; ctx.lineWidth = 1;
   const ys = niceStep(yMax / 4), xs = niceStep(xMax / 5);
-  ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--ink-3");
+  ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--label-2");
   for (let v = 0; v <= yMax + 1e-9; v += ys) { ctx.beginPath(); ctx.moveTo(L, Y(v)); ctx.lineTo(w - R, Y(v)); ctx.stroke(); ctx.fillText(String(+v.toFixed(1)), 4, Y(v) + 4); }
   for (let v = 0; v <= xMax + 1e-9; v += xs) ctx.fillText(String(+v.toFixed(1)), X(v) - 6, h - 14);
   ctx.fillText(xLabel, w - R - ctx.measureText(xLabel).width, h - 2);
@@ -98,7 +98,7 @@ export function xyPlot(canvas, { height = 220, series, xLabel, yLabel, xMax, yMa
     ctx.stroke(); ctx.setLineDash([]);
   }
   if (marker) {
-    ctx.fillStyle = css(marker.color); ctx.strokeStyle = css("--surface"); ctx.lineWidth = 2;
+    ctx.fillStyle = css(marker.color); ctx.strokeStyle = css("--card"); ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(X(marker.x), Y(Math.min(marker.y, yMax)), 6, 0, 7); ctx.fill(); ctx.stroke();
   }
 }
