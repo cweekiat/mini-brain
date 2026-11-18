@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mini Brain</title>
+<meta name="description" content="Building a scaled-down artificial brain one function at a time, with a live demo for every step and a side-by-side comparison with the real human brain.">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='40' fill='%232a78d6'/><path d='M20 55 L40 55 L48 20 L56 80 L62 55 L80 55' stroke='white' stroke-width='7' fill='none' stroke-linejoin='round'/></svg>">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<header class="top"><div class="wrap">
+  <a class="brand" href="index.html">Mini<span>Brain</span></a>
+  <nav class="steps-nav" id="nav" aria-label="Steps"></nav>
+</div></header>
+
+<main class="wrap">
+  <h1>Building a brain, one function at a time</h1>
+  <p class="lede">A learning project: code a scaled-down artificial brain on a laptop, step by step. Every step has a live demo you can play with, and compares what we built with the real human brain.</p>
+
+  <div class="callout"><b>The honest starting point.</b> A full human brain has about 86 billion neurons and 100 trillion connections. Just storing one number per connection would take hundreds of terabytes, around 10,000× more memory than a MacBook has. So we build a <i>scaled-down</i> brain: small circuits, each faithful enough to reproduce a real thing brains do.</div>
+
+  <h2>Three ideas that explain most of the brain</h2>
+  <div class="grid">
+    <div class="card"><h3>1. A neuron is a leaky bucket</h3><p class="muted">Inputs pour charge in, and it slowly leaks out. When the level reaches the brim, the neuron fires a <b>spike</b> (a 1-millisecond electrical click), empties, and starts again.</p></div>
+    <div class="card"><h3>2. A synapse is a volume knob</h3><p class="muted">Every connection has a strength. <b>Learning is turning knobs.</b> If neuron A keeps helping B fire, A→B gets louder. Memories live in the knob settings.</p></div>
+    <div class="card"><h3>3. Regions are specialist teams</h3><p class="muted">Vision, memory and decision teams each run their own circuits and pass messages along long cables, like departments in a company.</p></div>
+  </div>
+
+  <h2>Three zoom levels</h2>
+  <p class="muted">The project climbs these like zooming out on a map.</p>
+  <div class="zoom">
+    <div class="card"><div class="lvl">Street view · Cellular</div><h3>One neuron</h3><p class="muted">The bucket in detail: ion channels, voltage, the shape of a spike.</p></div>
+    <div class="card"><div class="lvl">Neighbourhood · Physiological</div><h3>A circuit</h3><p class="muted">Hundreds to thousands of neurons and their knobs, producing waves, memory, choices.</p></div>
+    <div class="card"><div class="lvl">Country · Anatomical</div><h3>Whole brain</h3><p class="muted">Each region shrunk to one “activity dial”, wired by the real human connection map.</p></div>
+  </div>
+
+  <h2>What fits on a laptop</h2>
+  <p class="muted">Bar length is a log scale: each tick is 10× more neurons.</p>
+  <div class="card" id="scale"></div>
+
+  <h2 id="roadmap">The roadmap</h2>
+  <p class="muted">Twelve steps, each a brain function. A tick appears when you mark a step done on its page.</p>
+  <div class="road" id="road"></div>
+
+  <h2>Real brain vs Mini Brain</h2>
+  <p class="muted">A running scoreboard. It updates as steps are built.</p>
+  <div class="pair-scroll"><table class="pair">
+    <thead><tr><th></th><th><span class="tag real">Real human brain</span></th><th><span class="tag model">Mini Brain (so far)</span></th></tr></thead>
+    <tbody>
+      <tr><td>Neurons</td><td>~86 billion</td><td id="sb-neurons">–</td></tr>
+      <tr><td>Connections</td><td>~100 trillion synapses</td><td id="sb-syn">0 so far (they arrive in Step 2)</td></tr>
+      <tr><td>Functions</td><td>Seeing, moving, remembering, deciding, language, consciousness…</td><td id="sb-fn">–</td></tr>
+      <tr><td>Power</td><td>~20 watts, about a dim light bulb</td><td>~20 watts too: a MacBook under load. But the laptop runs a tiny fraction of the neurons, a big hint that brains compute very differently.</td></tr>
+      <tr><td>Speed</td><td>Neurons click at most a few hundred times a second, but billions work at once</td><td>The chip ticks billions of times a second, but only a handful of cores work at once</td></tr>
+      <tr><td>Built by</td><td>Genes + years of experience</td><td>Equations from neuroscience + code you can read</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>How to use this site</h2>
+  <ol>
+    <li>Do the steps in order. Each builds on the one before.</li>
+    <li>On each page, read the analogy first, then play with the live demo <i>before</i> reading the equations.</li>
+    <li>Do the “Try this” experiments, then the quick check at the end.</li>
+    <li>The code is in <code>assets/sim/</code>: short, commented, and readable.</li>
+  </ol>
+</main>
+
+<footer><div class="wrap">Mini Brain · a learning project · models are simplified teaching versions of published neuroscience</div></footer>
+
+<script type="module">
+import { STEPS, navInto, isDone } from "./assets/steps.js";
+navInto(document.getElementById("nav"), 0, "");
+
+document.getElementById("road").innerHTML = STEPS.map((s) => {
+  const inner = `<span class="num">${s.n}</span><span><div class="title">${s.title}</div><div class="sub">${s.sub} · ${s.level}</div></span>
+    <span class="state">${s.ready ? (isDone(s.n) ? '<span class="done-mark">✓ done</span>' : "Ready →") : "Coming soon"}</span>`;
+  return s.ready ? `<a class="card ready" href="steps/${s.slug}.html">${inner}</a>` : `<div class="card step">${inner}</div>`;
+}).join("");
+
+const built = STEPS.filter((s) => s.ready);
+const biggest = Math.max(0, ...built.map((s) => s.neurons));
+document.getElementById("sb-neurons").textContent = `${biggest.toLocaleString()} (largest circuit built so far)`;
+document.getElementById("sb-fn").textContent = `${built.length} of ${STEPS.length}: ` + built.map((s) => s.title.toLowerCase()).join(", ");
+
+const sizes = [
+  ["One detailed neuron", 1, "ok", "every ion channel modelled"],
+  ["Worm (C. elegans)", 302, "ok", "full wiring map known"],
+  ["Cortical column", 10000, "ok", "basic unit of human cortex"],
+  ["Fruit fly brain", 140000, "slow", "full wiring map known (2024)"],
+  ["Honeybee brain", 1e6, "slow", "simple neurons only, no wiring map"],
+  ["Mouse brain", 7e7, "no", "~1,000× too big"],
+  ["Human brain", 8.6e10, "no", "~1,000,000× too big"],
+];
+const label = { ok: "✓ fits", slow: "◐ fits, slower than real time", no: "✕ too big" };
+const color = { ok: "var(--model)", slow: "#eda100", no: "var(--ink-3)" };
+const max = Math.log10(8.6e10);
+document.getElementById("scale").innerHTML = sizes.map(([name, n, k, note]) => `
+  <div style="margin:10px 0">
+    <div style="display:flex;justify-content:space-between;gap:8px;font-size:14px"><b>${name}</b><span style="color:${color[k]};font-size:13px">${label[k]}</span></div>
+    <div style="height:10px;border-radius:0 4px 4px 0;background:${color[k]};width:${Math.max(2, (Math.log10(n) / max) * 100)}%;margin:4px 0"></div>
+    <div class="muted" style="font-size:13px">${n.toLocaleString()} neurons · ${note}</div>
+  </div>`).join("");
+</script>
+</body>
+</html>
