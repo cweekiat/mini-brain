@@ -35,6 +35,7 @@
     <ul class="goals">
       <li>Why a spike is all-or-nothing</li>
       <li>How sodium and potassium channels make a spike</li>
+      <li>How to read the Hodgkin–Huxley equations</li>
       <li>How neurons encode “how much” as “how often”</li>
       <li>How to code each of these in a few lines</li>
     </ul>
@@ -51,6 +52,7 @@
   </div>
 
   <h2>Demo 1 · Leaky bucket</h2>
+<div class="duo">
   <section class="card" aria-labelledby="d1">
     <div class="demo-head"><h3 id="d1">Leaky integrate-and-fire neuron</h3><span class="speed">Slowed 4×</span></div>
     <div class="bucket-row">
@@ -74,6 +76,12 @@
       <button id="lif-pause">Pause</button>
     </div>
   </section>
+  <aside class="card live-code" aria-labelledby="c1">
+    <div class="demo-head"><h3 id="c1">The code</h3><span class="speed">Live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code1" aria-live="off"></pre>
+  </aside>
+</div>
 
   <div class="card">
     <h3>Try it</h3>
@@ -85,24 +93,49 @@
     </ol>
   </div>
 
-  <h2>The real neuron</h2>
+  <h2>How sodium and potassium make a spike</h2>
+
   <div class="card">
-    <p>A neuron sits at about <b>−70 mV</b> inside. Tiny doors in its membrane, called <b>ion channels</b>, make the spike:</p>
-    <ul>
-      <li><b style="color:var(--na)">Sodium flows in.</b> Voltage shoots up to about +40 mV.</li>
-      <li><b style="color:var(--k)">Potassium flows out.</b> Voltage falls back down.</li>
-      <li><b>Sodium doors jam shut</b> for 1–2 ms, so it can't fire again straight away.</li>
-    </ul>
-    <p class="sub">Hodgkin and Huxley wrote these equations in 1952 from a squid's nerve, and won a Nobel Prize. Demo 2 runs them.</p>
+    <h3>1. Why ions want to move</h3>
+    <p>Pumps keep the two sides of the membrane uneven:</p>
+    <div class="ions">
+      <div class="ion na"><b>Sodium (Na⁺)</b><span>~10× more <i>outside</i></span><span>Wants to rush <b>in</b></span><span>Pulls voltage toward <b>+50 mV</b></span></div>
+      <div class="ion k"><b>Potassium (K⁺)</b><span>~30× more <i>inside</i></span><span>Wants to leak <b>out</b></span><span>Pulls voltage toward <b>−77 mV</b></span></div>
+    </div>
+    <p class="sub" style="margin-top:0.75rem">Whichever ion has more open channels wins the tug-of-war. At rest, mostly potassium channels are open, so the cell sits near −65 mV, close to potassium's −77.</p>
+  </div>
+
+  <div class="card">
+    <h3>2. The channels have gates</h3>
+    <div class="gates">
+      <div><span class="g" style="background:var(--na)">m</span><p><b>Sodium “opener”</b>: fast. Opens when voltage rises.</p></div>
+      <div><span class="g" style="background:var(--label-2)">h</span><p><b>Sodium “plug”</b>: slow. <i>Closes</i> when voltage rises.</p></div>
+      <div><span class="g" style="background:var(--k)">n</span><p><b>Potassium door</b>: slow. Opens when voltage rises.</p></div>
+    </div>
+    <p class="sub" style="margin-top:0.5rem">Each gate is a number from 0 (shut) to 1 (open). Sodium flows only when the opener is open <i>and</i> the plug is out.</p>
+  </div>
+
+  <div class="card">
+    <h3>3. A spike in four stages</h3>
+    <ol class="tasks stages">
+      <li><span><b>Rest</b> · −65 mV<span class="see">Sodium openers shut (m = 0.05). Some potassium open (n = 0.32).</span></span></li>
+      <li><span><b>Rise</b> · up to +41 mV in ~1 ms<span class="see">Input nudges V up → openers fly open (m = 0.89) → sodium rushes in → V rises more. A chain reaction.</span></span></li>
+      <li><span><b>Fall</b> · back down in ~2 ms<span class="see">The slow plug closes (h = 0.09) and stops sodium. Potassium doors open (n = 0.77) and K⁺ leaves.</span></span></li>
+      <li><span><b>Undershoot</b> · −76 mV, ~10 ms to recover<span class="see">Potassium doors are slow to shut, so V dips below rest. The plug is still in (h = 0.11), so it can't fire: the refractory period.</span></span></li>
+    </ol>
+    <p class="sub" style="margin-top:0.5rem">Watch all four stages live in the gate trace in Demo 2.</p>
   </div>
 
   <h2>Demo 2 · Real ion channels</h2>
+<div class="duo">
   <section class="card" aria-labelledby="d2">
     <div class="demo-head"><h3 id="d2">Hodgkin–Huxley neuron</h3><span class="speed">Slowed 30× · last 100 ms</span></div>
     <canvas class="plot" id="hh-scope" role="img" aria-label="Live voltage trace of the Hodgkin–Huxley neuron"></canvas>
     <div class="legend"><span><i style="background:var(--accent)"></i>Voltage</span></div>
     <canvas class="plot" id="hh-cur" role="img" aria-label="Live sodium and potassium currents" style="margin-top:8px"></canvas>
     <div class="legend"><span><i style="background:var(--na)"></i>Sodium in (above zero)</span><span><i style="background:var(--k)"></i>Potassium out (below zero)</span></div>
+    <canvas class="plot" id="hh-gates" role="img" aria-label="Live gate openness: sodium opener m, sodium plug h, potassium door n" style="margin-top:8px"></canvas>
+    <div class="legend"><span><i style="background:var(--na)"></i><i>m</i> sodium opener</span><span><i style="background:var(--label-2)"></i><i>h</i> sodium plug</span><span><i style="background:var(--k)"></i><i>n</i> potassium door</span><span>0 = shut, 1 = open</span></div>
     <div class="stats">
       <span class="stat">Firing rate<b id="hh-rate">0 Hz</b></span>
       <span class="stat">Peak voltage<b id="hh-peak">−65 mV</b></span>
@@ -120,18 +153,84 @@
       <button id="hh-pause">Pause</button>
     </div>
   </section>
+  <aside class="card live-code" aria-labelledby="c2">
+    <div class="demo-head"><h3 id="c2">The code</h3><span class="speed">Live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code2" aria-live="off"></pre>
+  </aside>
+</div>
 
   <div class="card">
     <h3>Try it</h3>
     <ol class="tasks">
       <li><span>Press <b>Zap</b>.<span class="see">Sodium surges first, then potassium pulls the voltage back.</span></span></li>
+      <li><span>Zap again and watch the <b>gate trace</b>.<span class="see">m jumps open first. Then h drops and n rises: the plug and the potassium door.</span></span></li>
       <li><span>Watch the end of the spike.<span class="see">It dips below rest before recovering. The bucket can't do this.</span></span></li>
       <li><span>Press <b>Zap Twice</b>.<span class="see">The second zap does nothing. That's the refractory period.</span></span></li>
       <li><span>Turn on <b>Block sodium</b>, then zap.<span class="see">No spike. This is how dental anaesthetic stops pain.</span></span></li>
     </ol>
   </div>
 
+  <h2>The Hodgkin–Huxley equations</h2>
+  <p class="sub">Two equations describe everything above. Hodgkin and Huxley fitted them to a squid's giant nerve in 1952, and won the 1963 Nobel Prize. Demo 2 runs them exactly.</p>
+
+  <div class="card">
+    <h3>Equation 1 · The voltage</h3>
+    <p>How fast the voltage changes = input − three currents.</p>
+    <div class="eq" role="math" aria-label="C dV by dt equals I minus g sodium m cubed h times V minus E sodium, minus g potassium n to the fourth times V minus E potassium, minus g leak times V minus E leak">
+      <span class="ln"><i>C</i> · d<i>V</i>/d<i>t</i> = <i>I</i></span>
+      <span class="ln na">− <i>g</i><sub>Na</sub> <i>m</i>³<i>h</i> (<i>V</i> − <i>E</i><sub>Na</sub>)</span>
+      <span class="ln k">− <i>g</i><sub>K</sub> <i>n</i>⁴ (<i>V</i> − <i>E</i><sub>K</sub>)</span>
+      <span class="ln">− <i>g</i><sub>L</sub> (<i>V</i> − <i>E</i><sub>L</sub>)</span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>C</i> d<i>V</i>/d<i>t</i></span><span>Rate of voltage change. <i>C</i> is the membrane's capacitance: how much charge it stores.</span></div>
+      <div><span class="sym"><i>I</i></span><span>Input current: the slider and the zaps.</span></div>
+      <div><span class="sym"><i>g</i><sub>Na</sub> = 120</span><span>Sodium conductance if <i>every</i> door were open. Gates scale it down.</span></div>
+      <div><span class="sym"><i>m</i>³<i>h</i></span><span>Fraction of sodium channels open. Three openers <i>and</i> the plug must allow it: <i>m</i>×<i>m</i>×<i>m</i>×<i>h</i>.</span></div>
+      <div><span class="sym"><i>n</i>⁴</span><span>Fraction of potassium channels open. Four parts must all open.</span></div>
+      <div><span class="sym">(<i>V</i> − <i>E</i>)</span><span>Driving force. How far V is from the ion's target voltage (+50 for Na, −77 for K). Further away = stronger push.</span></div>
+      <div><span class="sym"><i>g</i><sub>L</sub>(<i>V</i> − <i>E</i><sub>L</sub>)</span><span>A small leak that's always open.</span></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Equation 2 · The gates</h3>
+    <p>Each gate opens and closes at speeds set by the voltage.</p>
+    <div class="eq" role="math" aria-label="d m by d t equals alpha m of V times 1 minus m, minus beta m of V times m">
+      <span class="ln">d<i>m</i>/d<i>t</i> = <i>α<sub>m</sub></i>(<i>V</i>) (1 − <i>m</i>) − <i>β<sub>m</sub></i>(<i>V</i>) <i>m</i></span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>α<sub>m</sub></i>(<i>V</i>)</span><span>Opening speed. Grows as V rises.</span></div>
+      <div><span class="sym">(1 − <i>m</i>)</span><span>The gates still shut, which are able to open.</span></div>
+      <div><span class="sym"><i>β<sub>m</sub></i>(<i>V</i>)</span><span>Closing speed.</span></div>
+      <div><span class="sym"><i>m</i></span><span>The gates already open, which are able to close.</span></div>
+    </div>
+    <p class="sub" style="margin-top:0.75rem">The same equation runs for <i>h</i> and <i>n</i>, each with its own speeds. <i>m</i> is ~10× faster than <i>h</i> and <i>n</i>. That timing difference is the whole spike: sodium opens first, then the plug and potassium catch up.</p>
+  </div>
+
+  <details>
+    <summary>All the numbers</summary>
+    <div class="inner">
+      <p class="foot">Rates per ms, V in mV (resting at −65).</p>
+      <div class="eq" style="font-size:0.9375rem">
+        <span class="ln"><i>α<sub>m</sub></i> = 0.1(<i>V</i>+40) / (1 − e<sup>−(<i>V</i>+40)/10</sup>)</span>
+        <span class="ln"><i>β<sub>m</sub></i> = 4 e<sup>−(<i>V</i>+65)/18</sup></span>
+        <span class="ln"><i>α<sub>h</sub></i> = 0.07 e<sup>−(<i>V</i>+65)/20</sup></span>
+        <span class="ln"><i>β<sub>h</sub></i> = 1 / (1 + e<sup>−(<i>V</i>+35)/10</sup>)</span>
+        <span class="ln"><i>α<sub>n</sub></i> = 0.01(<i>V</i>+55) / (1 − e<sup>−(<i>V</i>+55)/10</sup>)</span>
+        <span class="ln"><i>β<sub>n</sub></i> = 0.125 e<sup>−(<i>V</i>+65)/80</sup></span>
+      </div>
+      <div class="terms-grid">
+        <div><span class="sym"><i>C</i></span><span>1 µF/cm²</span></div>
+        <div><span class="sym"><i>g</i><sub>Na</sub>, <i>g</i><sub>K</sub>, <i>g</i><sub>L</sub></span><span>120, 36, 0.3 mS/cm²</span></div>
+        <div><span class="sym"><i>E</i><sub>Na</sub>, <i>E</i><sub>K</sub>, <i>E</i><sub>L</sub></span><span>+50, −77, −54.4 mV</span></div>
+      </div>
+    </div>
+  </details>
+
   <h2>Demo 3 · Strength becomes rhythm</h2>
+<div class="duo">
   <section class="card" aria-labelledby="d3">
     <h3 id="d3">Firing rate vs input</h3>
     <p class="sub">The red dot follows the input slider in each demo above.</p>
@@ -141,87 +240,12 @@
     </div>
     <p style="margin-top:0.75rem">The bucket <b>speeds up smoothly</b>. The real channels <b>jump</b> from silent to ~60 Hz. Brains use both kinds.</p>
   </section>
-
-  <h2>How it's coded</h2>
-  <p class="sub">Each thing a real neuron does becomes a few lines of code. Simplified from <a href="https://github.com/cweekiat/mini-brain/blob/main/assets/sim/neuron.js">neuron.js</a>.</p>
-
-  <div class="card coded">
-    <p class="bio">BIOLOGY · Charge leaks out, input flows in</p>
-    <h3>1. Integrate</h3>
-<pre><code class="js">
-// every 0.1 ms step:
-// leak back to rest + fill from input
-V += (dt / tau) *
-     (-(V - V_rest) + R * input);
-</code></pre>
-    <p class="out">One line is the whole “leaky bucket”. <code>tau</code> is the Leak time slider.</p>
-  </div>
-
-  <div class="card coded">
-    <p class="bio">BIOLOGY · A spike is all-or-nothing</p>
-    <h3>2. Fire and reset</h3>
-<pre><code class="js">
-// reached the brim?
-if (V >= threshold) {
-  spikes.push(t); // same every time
-  V = V_reset;    // empty the bucket
-}
-</code></pre>
-    <p class="out">A spike is just a timestamp. Size never changes, only timing.</p>
-  </div>
-
-  <div class="card coded">
-    <p class="bio">BIOLOGY · It can't fire again for ~2 ms</p>
-    <h3>3. Refractory period</h3>
-<pre><code class="js">
-// fired very recently?
-if (refractoryLeft > 0) {
-  refractoryLeft -= dt; // countdown
-  return;               // ignore input
-}
-</code></pre>
-    <p class="out">A countdown timer. This caps the firing rate at a few hundred Hz.</p>
-  </div>
-
-  <div class="card coded">
-    <p class="bio">BIOLOGY · Sodium doors open as voltage rises</p>
-    <h3>4. Ion channel gates</h3>
-<pre><code class="js">
-// m = share of sodium gates open (0–1)
-m += dt * (open(V) * (1 - m)
-         - close(V) * m);
-// more open gates, more sodium in
-I_Na = g_Na * m**3 * h * (V - E_Na);
-</code></pre>
-    <p class="out">Higher V opens more gates, which lets in more sodium, which raises V. This loop is the spike in Demo 2.</p>
-  </div>
-
-  <div class="card coded">
-    <p class="bio">BIOLOGY · Lidocaine blocks sodium channels</p>
-    <h3>5. A drug is one number</h3>
-<pre><code class="js">
-// block = 1 → I_Na = 0 → no spike
-I_Na = g_Na * (1 - block)
-     * m**3 * h * (V - E_Na);
-</code></pre>
-    <p class="out">The “Block sodium” switch in Demo 2 sets <code>block</code> to 1.</p>
-  </div>
-
-  <div class="card coded">
-    <p class="bio">BIOLOGY · Stronger input, more spikes per second</p>
-    <h3>6. Rate coding</h3>
-<pre><code class="js">
-function firingRate(input) {
-  let count = 0;
-  // simulate 1 second, count spikes
-  for (let t = 0; t < 1000; t += dt)
-    if (neuron.step(dt, input))
-      count++;
-  return count; // spikes/s (Hz)
-}
-</code></pre>
-    <p class="out">Run this for every input level and you get the curves in Demo 3.</p>
-  </div>
+  <aside class="card live-code" aria-labelledby="c3">
+    <div class="demo-head"><h3 id="c3">The code</h3><span class="speed">Live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code3" aria-live="off"></pre>
+  </aside>
+</div>
 
   <h2>Real vs our model</h2>
   <div class="card vs">
@@ -248,6 +272,9 @@ function firingRate(input) {
       <div><dt>Threshold</dt><dd>The voltage where a spike becomes unstoppable.</dd></div>
       <div><dt>Action potential (spike)</dt><dd>A 1 ms all-or-nothing voltage pulse.</dd></div>
       <div><dt>Ion channel</dt><dd>A protein door that lets one kind of ion through.</dd></div>
+      <div><dt>Gate (m, h, n)</dt><dd>The moving part of a channel. 0 = shut, 1 = open.</dd></div>
+      <div><dt>Reversal potential (E)</dt><dd>The voltage an ion pushes toward: +50 mV for Na⁺, −77 mV for K⁺.</dd></div>
+      <div><dt>Conductance (g)</dt><dd>How easily current flows through the channels.</dd></div>
       <div><dt>Refractory period</dt><dd>The short time after a spike when it can't fire.</dd></div>
       <div><dt>Firing rate</dt><dd>Spikes per second (Hz). Encodes input strength.</dd></div>
     </dl>
@@ -281,10 +308,21 @@ function firingRate(input) {
 import { LIF, HH, rateOf } from "../assets/sim/neuron.js";
 import { Scope, xyPlot, slider } from "../assets/plot.js";
 import { isDone, setDone } from "../assets/steps.js";
-import { highlight } from "../assets/code.js";
-highlight();
+
+// ── Live code panels: real code with current inputs and outputs filled in ──
+const C = (s) => `<span class="tc">${s}</span>`;           // comment
+const K = (s) => `<span class="tk">${s}</span>`;           // keyword
+const IN = (v) => `<span class="lv in">${v}</span>`;       // value you control
+const OUT = (v) => `<span class="lv out">${v}</span>`;     // value the code computed
+const num = (v, d = 1) => (v < 0 ? "−" : "") + Math.abs(v).toFixed(d);
+function paint(id, lines) {
+  document.getElementById(id).innerHTML = lines
+    .map((l) => (Array.isArray(l) ? `<span class="line ${l[1]}">${l[0]}</span>` : `<span class="line">${l}</span>`))
+    .join("");
+}
 
 let lifFI = [], hhFI = []; // firing-rate curves for Demo 3
+let hhI = 0;               // Demo 2 input, read by Demo 3's code panel
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const $ = (id) => document.getElementById(id);
 const mv = (v) => (v < 0 ? "−" : "+") + Math.abs(Math.round(v)) + " mV";
@@ -308,7 +346,32 @@ function playToggle(id) {
 
 // ── Demo 1: leaky bucket ─────────────────────────────────────────────
 const lif = new LIF();
-let lifI = 0, lifNoise = 0, lifZap = 0, lifCount = 0, lifRecent = [], lifT = 0;
+let lifI = 0, lifNoise = 0, lifZap = 0, lifCount = 0, lifRecent = [], lifT = 0, lifFiredAt = -1e9;
+
+function codeLIF() {
+  const hit = performance.now() - lifFiredAt < 300 ? "hit" : "";
+  paint("code1", [
+    C("// inputs: the sliders"),
+    `input     = ${IN(lifI.toFixed(2))} ${C("// nA")}`,
+    `tau       = ${IN(lif.tau)} ${C("// ms")}`,
+    `threshold = ${IN(num(lif.Vth, 0))} ${C("// mV")}`,
+    `noise     = ${IN(lifNoise.toFixed(1))}`,
+    "",
+    C("// every 0.1 ms: leak + fill"),
+    "V += dt / tau *",
+    "  (-(V - V_rest) + R * input);",
+    `${C("// → V =")} ${OUT(num(lif.V) + " mV")}`,
+    "",
+    C("// all-or-nothing spike"),
+    [`${K("if")} (V &gt;= threshold) {${hit ? " " + C("← fired!") : ""}`, hit],
+    [`  spikes++;  ${C("// →")} ${OUT(lifCount)}`, hit],
+    [`  V = V_reset; ${C("// −75 mV")}`, hit],
+    [`  refractory = 2; ${C("// ms")}`, hit],
+    [`}`, hit],
+    "",
+    `${C("// → rate =")} ${OUT(rateFrom(lifRecent, lifT) + " Hz")}`,
+  ]);
+}
 const lifRun = playToggle("lif-pause");
 const lifScope = new Scope($("lif-scope"), {
   yMin: -80, yMax: -35, yLabel: "mV", window: 1000, lines: [{ color: "--accent" }],
@@ -328,7 +391,7 @@ function lifFrame() {
     if (lifZap > 0) lifZap -= dt;
     const s = lif.step(dt, I);
     lifT += dt;
-    if (s) { lifCount++; lifRecent.push(lifT); bucket.classList.add("fired"); setTimeout(() => bucket.classList.remove("fired"), 120); }
+    if (s) { lifCount++; lifRecent.push(lifT); lifFiredAt = performance.now(); bucket.classList.add("fired"); setTimeout(() => bucket.classList.remove("fired"), 120); }
     if (k % 4 === 3) lifScope.push([s ? -35 : lif.V], s ? 1 : 0);
     else if (s) lifScope.push([-35], 1);
   }
@@ -342,7 +405,34 @@ function lifFrame() {
 
 // ── Demo 2: Hodgkin–Huxley ───────────────────────────────────────────
 const hh = new HH();
-let hhI = 0, hhPulses = [], hhT = 0, hhRecent = [], hhWinMax = -99, hhWinEnd = 25, hhPeak = -65;
+let hhPulses = [], hhT = 0, hhRecent = [], hhWinMax = -99, hhWinEnd = 25, hhPeak = -65, hhZapAt = -1e9;
+
+function codeHH() {
+  const zap = performance.now() - hhZapAt < 400 ? 20 : 0;
+  const spiking = hh.V > -40 ? "hit" : "";
+  paint("code2", [
+    C("// inputs"),
+    `I = ${IN(hhI.toFixed(1))} + zap ${IN(zap)} ${C("// µA/cm²")}`,
+    `naBlock = ${IN(hh.naBlock)}  kBlock = ${IN(hh.kBlock)}`,
+    "",
+    C("// Equation 2: gates move"),
+    `m=${OUT(hh.m.toFixed(2))} h=${OUT(hh.h.toFixed(2))} n=${OUT(hh.n.toFixed(2))}`,
+    "",
+    C("// Equation 1: three currents"),
+    ["I_Na = 120 * (1 - naBlock)", spiking],
+    ["     * m**3 * h * (V - 50)", spiking],
+    [`     ${C("// →")} ${OUT(num(hh.INa))}`, spiking],
+    "I_K  = 36 * (1 - kBlock)",
+    "     * n**4 * (V + 77)",
+    `     ${C("// →")} ${OUT(num(hh.IK))}`,
+    "I_L  = 0.3 * (V + 54.4)",
+    `     ${C("// →")} ${OUT(num(0.3 * (hh.V - hh.EL)))}`,
+    "",
+    "V += dt / C *",
+    "  (I - I_Na - I_K - I_L);",
+    `${C("// → V =")} ${OUT(num(hh.V) + " mV")}${spiking ? " " + C("← spiking") : ""}`,
+  ]);
+}
 const hhRun = playToggle("hh-pause");
 const hhScope = new Scope($("hh-scope"), {
   height: 200, yMin: -85, yMax: 50, yLabel: "mV", window: 1000, lines: [{ color: "--accent" }],
@@ -351,12 +441,17 @@ const hhScope = new Scope($("hh-scope"), {
 const hhCur = new Scope($("hh-cur"), {
   height: 130, yMin: -800, yMax: 800, yLabel: "µA/cm²", window: 1000, lines: [{ color: "--na" }, { color: "--k" }],
 });
+const hhGates = new Scope($("hh-gates"), {
+  height: 120, yMin: 0, yMax: 1, yLabel: "open", window: 1000,
+  lines: [{ color: "--na" }, { color: "--label-2" }, { color: "--k" }],
+});
 slider("hh-I", (v) => v.toFixed(1), (v) => { hhI = v; drawFI(); });
 $("hh-na").onchange = (e) => (hh.naBlock = e.target.checked ? 1 : 0);
 $("hh-k").onchange = (e) => (hh.kBlock = e.target.checked ? 0.8 : 0);
 const wake = () => { if (hhRun.paused) $("hh-pause").click(); };
-$("hh-zap").onclick = () => { hhPulses.push([hhT + 1, hhT + 2]); wake(); };
-$("hh-double").onclick = () => { hhPulses.push([hhT + 1, hhT + 2], [hhT + 5, hhT + 6]); wake(); };
+$("hh-zap").onclick = () => { hhPulses.push([hhT + 1, hhT + 2]); hhZapAt = performance.now(); wake(); };
+$("hh-double").onclick = () => { hhPulses.push([hhT + 1, hhT + 2], [hhT + 5, hhT + 6]); hhZapAt = performance.now(); wake(); };
+for (const id of ["hh-na", "hh-k"]) $(id).addEventListener("change", codeHH);
 
 function hhFrame() {
   for (let k = 0; k < 50; k++) { // 0.5 ms of brain time per frame, dt = 0.01 ms
@@ -366,18 +461,21 @@ function hhFrame() {
     hhWinMax = Math.max(hhWinMax, hh.V);
     hhT += dt;
     if (hhT >= hhWinEnd) { hhPeak = hhWinMax; hhWinMax = -99; hhWinEnd = hhT + 25; }
-    if (k % 10 === 9) { hhScope.push([hh.V]); hhCur.push([-hh.INa, -hh.IK]); }
+    if (k % 10 === 9) { hhScope.push([hh.V]); hhCur.push([-hh.INa, -hh.IK]); hhGates.push([hh.m, hh.h, hh.n]); }
   }
   hhPulses = hhPulses.filter(([, b]) => b > hhT);
   hhRecent = hhRecent.slice(-5);
-  hhScope.draw(); hhCur.draw();
+  hhScope.draw(); hhCur.draw(); hhGates.draw();
   $("hh-rate").textContent = rateFrom(hhRecent, hhT) + " Hz";
   $("hh-peak").textContent = mv(hhPeak);
 }
 
+let frame = 0;
 (function loop() {
   if (!lifRun.paused) lifFrame();
   if (!hhRun.paused) hhFrame();
+  // refresh the live code ~20×/s so the numbers stay readable
+  if (frame++ % 3 === 0) { codeLIF(); codeHH(); }
   requestAnimationFrame(loop);
 })();
 
@@ -399,7 +497,25 @@ function interp(c, x) {
   }
   return c.length ? c.at(-1)[1] : 0;
 }
+function codeFI() {
+  paint("code3", [
+    `${K("function")} firingRate(input) {`,
+    `  ${K("let")} count = 0;`,
+    `  ${C("// simulate 1 s, count spikes")}`,
+    `  ${K("for")} (t = 0; t &lt; 1000; t += dt)`,
+    `    ${K("if")} (neuron.step(dt, input))`,
+    "      count++;",
+    `  ${K("return")} count; ${C("// spikes/s")}`,
+    "}",
+    "",
+    `firingRate(${IN(lifI.toFixed(2))}) ${C("// bucket")}`,
+    `  ${C("// →")} ${OUT(Math.round(interp(lifFI, lifI)) + " Hz")}`,
+    `firingRate(${IN(hhI.toFixed(1))}) ${C("// HH")}`,
+    `  ${C("// →")} ${OUT(hhFI.length ? Math.round(interp(hhFI, hhI)) + " Hz" : "…")}`,
+  ]);
+}
 function drawFI() {
+  codeFI();
   if (lifFI.length) xyPlot($("fi-lif"), { height: 190, xMax: 5, yMax: 150, xLabel: "input (nA)", yLabel: "Hz",
     series: [{ points: lifFI, color: "--accent" }], marker: { x: lifI, y: interp(lifFI, lifI), color: "--real" } });
   if (hhFI.length) xyPlot($("fi-hh"), { height: 190, xMax: 20, yMax: 150, xLabel: "input (µA/cm²)", yLabel: "Hz",
@@ -408,7 +524,7 @@ function drawFI() {
 computeLifFI();
 setTimeout(computeHhFI, 50);
 addEventListener("resize", drawFI);
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawFI(); lifScope.draw(); hhScope.draw(); hhCur.draw(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawFI(); lifScope.draw(); hhScope.draw(); hhCur.draw(); hhGates.draw(); });
 
 // ── Quiz ─────────────────────────────────────────────────────────────
 const QUIZ = [

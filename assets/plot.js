@@ -44,9 +44,9 @@ export class Scope {
     // grid + y ticks
     const step = niceStep((yMax - yMin) / 4);
     ctx.strokeStyle = css("--grid"); ctx.fillStyle = css("--label-2"); ctx.lineWidth = 1;
-    for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) {
+    for (let v = Math.ceil(yMin / step) * step; v <= yMax + 1e-9; v += step) {
       ctx.beginPath(); ctx.moveTo(L, y(v)); ctx.lineTo(w - R, y(v)); ctx.stroke();
-      ctx.fillText(String(Math.round(v)), 4, y(v) + 4);
+      ctx.fillText(step < 1 ? v.toFixed(1) : String(Math.round(v)), 4, y(v) + 4);
     }
     if (this.yLabel) ctx.fillText(this.yLabel, L + 4, T + 10);
     // reference lines (threshold etc.)
