@@ -9,6 +9,7 @@ Every step is a web page with:
 - a plain-language **analogy**
 - a **live demo** running a real neuroscience model in your browser
 - **“Try this”** experiments
+- **How it's coded**: each brain behaviour paired with the few lines of code that reproduce it
 - a **real brain vs artificial brain** comparison
 - the **code**, short and commented
 - a quick **check** quiz
@@ -47,6 +48,7 @@ index.html            home page, roadmap, scoreboard
 steps/NN-name.html    one page per step (lesson + live demos)
 assets/style.css      shared styles (light + dark)
 assets/plot.js        tiny canvas plotting helpers
+assets/code.js        syntax colouring for code snippets
 assets/steps.js       the list of steps: drives nav, roadmap, scoreboard
 assets/sim/*.js       the brain models, one file per topic
 ```
