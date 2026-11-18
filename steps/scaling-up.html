@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>How connected is the brain? · Mini Brain</title>
+<meta name="description" content="Side trip: how many connections each neuron has, how the brain is wired, and what it would take to simulate it.">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M18 56h20l8-30 9 48 7-18h20' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="../assets/style.css?v=4">
+<style>
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 10px; margin-bottom: 0.75rem; }
+  .kpi { background: var(--card); border-radius: 14px; padding: 0.875rem 1rem; }
+  .kpi b { display: block; font-size: 1.75rem; line-height: 1.15; font-weight: 700; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+  .kpi span { font-size: 0.8125rem; color: var(--label-2); }
+  canvas.netc { width: 100%; aspect-ratio: 1; display: block; cursor: pointer; }
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 0.75rem; }
+  .presets button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .hbar { display: grid; grid-template-columns: minmax(7.5rem, 11rem) minmax(0, 1fr); gap: 4px 10px; align-items: center; font-size: 0.875rem; padding: 4px 0; }
+  .hbar .track { position: relative; height: 18px; }
+  .hbar .fillb { position: absolute; inset: 0 auto 0 0; border-radius: 0 4px 4px 0; min-width: 3px; }
+  .hbar .val { position: absolute; top: 0; font-size: 0.8125rem; font-variant-numeric: tabular-nums; color: var(--label); white-space: nowrap; line-height: 18px; padding-left: 6px; }
+  .hbar .who { color: var(--label); }
+  .hbar .who small { display: block; color: var(--label-2); font-size: 0.75rem; }
+  .cx { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
+  .cx .card { margin: 0; }
+  .cx .status { font-size: 0.8125rem; font-weight: 600; color: var(--model); margin-top: 0.375rem; }
+  .cx .status.no { color: var(--label-2); }
+  select { font: inherit; font-size: 1rem; min-height: 44px; border-radius: 10px; border: 0; background: var(--fill); color: var(--label); padding: 0 0.75rem; width: 100%; }
+  @media (max-width: 480px) { .hbar { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="navbar"><div class="wrap">
+  <a class="back" href="../index.html#roadmap">Roadmap</a>
+  <span class="meta">Side trip</span>
+</div></header>
+
+<main class="wrap" id="main">
+  <p class="eyebrow">Side trip · Scaling up</p>
+  <h1>How connected is the brain?</h1>
+  <p class="lede">The brain's power lives less in its neurons than in their connections. Here's how many there are, how they're arranged, and what it would take to copy them.</p>
+
+  <div class="kpis" role="list">
+    <div class="kpi" role="listitem"><b>86 billion</b><span>neurons</span></div>
+    <div class="kpi" role="listitem"><b>~150 trillion</b><span>synapses (estimates: 100–1,000 trillion)</span></div>
+    <div class="kpi" role="listitem"><b>~7,000</b><span>inputs to a typical cortical neuron</span></div>
+    <div class="kpi" role="listitem"><b>~165,000 km</b><span>of wiring: 4× around the Earth</span></div>
+    <div class="kpi" role="listitem"><b>~20 W</b><span>to run it all</span></div>
+  </div>
+
+  <div class="card">
+    <h3>You'll learn</h3>
+    <ul class="goals">
+      <li>How many connections neurons have, and how much that varies</li>
+      <li>Why “dense locally, sparse globally” wiring is so efficient</li>
+      <li>Why connections, not neurons, make the brain so hard to simulate</li>
+      <li>How today's spiking networks compare</li>
+    </ul>
+  </div>
+
+  <h2>Not every neuron is equal</h2>
+  <div class="card">
+    <h3>Inputs per neuron, across brains and machines</h3>
+    <p class="foot" style="margin:0 0 8px">Log scale: each gridline step is 10× more.</p>
+    <div id="fanin" role="img" aria-label="Inputs per neuron, log scale, from 4 for a cerebellar granule cell to about 150,000 for a Purkinje cell"></div>
+    <div class="legend"><span><i style="background:var(--real)"></i>Real neurons</span><span><i style="background:var(--model)"></i>Mini Brain</span><span><i style="background:var(--label-2)"></i>Neuromorphic chips</span></div>
+    <p class="sub" style="margin-top:0.5rem">The most common neuron in your brain (the cerebellar granule cell, ~69 billion of them) has just 4 inputs, while its neighbour the Purkinje cell has ~150,000. So the brain-wide <i>average</i>, ~1,700, hides a 40,000× range.</p>
+  </div>
+
+  <h2>Demo 1 · Small-world wiring</h2>
+  <p class="sub">Real neurons mostly connect to their neighbours, plus a few long-range “shortcuts”. Watch what a handful of shortcuts does.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d1">
+    <div class="demo-head"><h3 id="d1">200 neurons on a ring</h3><span class="speed">Tap a neuron</span></div>
+    <canvas class="netc" id="net" role="img" aria-label="Network of 200 neurons on a ring with their links. Tap a neuron to colour every other neuron by how many hops away it is."></canvas>
+    <div class="legend" id="hoplegend"></div>
+    <div class="stats">
+      <span class="stat">Average hops<b id="g-L">–</b></span>
+      <span class="stat">Clustering<b id="g-C">–</b></span>
+      <span class="stat">Reach all from here<b id="g-max">–</b></span>
+    </div>
+    <div class="presets" role="group" aria-label="Wiring presets">
+      <button data-p="0" aria-pressed="false">Neighbours only</button>
+      <button data-p="0.05" aria-pressed="true">Brain-like</button>
+      <button data-p="1" aria-pressed="false">Random</button>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="g-k">Links per neuron <output for="g-k"></output></label><input type="range" id="g-k" min="2" max="20" step="2" value="10"></div>
+      <div class="ctrl"><label for="g-p">Shortcuts <output for="g-p"></output></label><input type="range" id="g-p" min="0" max="100" step="1" value="5"><p class="hint">Chance each link is rewired far away</p></div>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c1">
+    <div class="demo-head"><h3 id="c1">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code1" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Press <b>Neighbours only</b>, then tap a neuron.<span class="see">Messages crawl around the ring: ~10 hops on average.</span></span></li>
+      <li><span>Press <b>Brain-like</b> (5% shortcuts).<span class="see">Average hops drop to ~3.5, yet neighbourhoods stay tightly knit (clustering barely falls).</span></span></li>
+      <li><span>Press <b>Random</b>.<span class="see">Even fewer hops, but clustering collapses: no local teams left.</span></span></li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h3>Why the brain is wired this way</h3>
+    <ul>
+      <li><b>Local teams</b> (high clustering) can work on one job together, like a cortical column.</li>
+      <li><b>A few shortcuts</b> (low hops) let distant regions share results fast.</li>
+      <li><b>Wire is expensive.</b> Long axons cost space and energy, so the brain uses as few as it can. Small-world wiring gets both benefits cheaply.</li>
+    </ul>
+  </div>
+
+  <h2>Demo 2 · What would it take?</h2>
+  <p class="sub">Every connection needs memory to store, and every spike must be delivered to all of a neuron's targets. Pick a brain and see.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d2">
+    <div class="demo-head"><h3 id="d2">Brain simulation calculator</h3><span class="speed">Live</span></div>
+    <div class="controls" style="margin-top:0">
+      <div class="ctrl"><label for="b-brain">Brain</label>
+        <select id="b-brain">
+          <option value="worm">C. elegans worm</option>
+          <option value="fly">Fruit fly</option>
+          <option value="mini">Mini Brain, Step 3</option>
+          <option value="mouse">Mouse (rough estimate)</option>
+          <option value="human" selected>Human</option>
+        </select></div>
+      <div class="ctrl"><label for="b-k">Inputs per neuron <output for="b-k"></output></label><input type="range" id="b-k" min="0" max="5.3" step="0.01"><p class="hint">Log scale: 1 to 200,000</p></div>
+      <div class="ctrl"><label for="b-rate">Average firing rate <output for="b-rate"></output></label><input type="range" id="b-rate" min="0.1" max="10" step="0.1" value="1"><p class="hint">Real cortex: roughly 0.1–5 Hz</p></div>
+      <div class="ctrl"><label for="b-bytes">Bytes per synapse</label>
+        <select id="b-bytes"><option value="2">2 (tiny weight)</option><option value="4">4 (weight only)</option><option value="8" selected>8 (weight + target address)</option><option value="16">16 (with plasticity state)</option></select></div>
+    </div>
+    <p class="foot" style="margin:1rem 0 6px">Synapses that fit in each machine (log scale)</p>
+    <div id="fit" role="img" aria-label="Synapses needed versus synapses that fit in a MacBook, a GPU, Intel Hala Point and the Fugaku supercomputer"></div>
+    <div class="stats">
+      <span class="stat">Synapses<b id="b-syn">–</b></span>
+      <span class="stat">Memory<b id="b-mem">–</b></span>
+      <span class="stat">Events per second<b id="b-ev">–</b></span>
+      <span class="stat">1 s of brain on a laptop<b id="b-time">–</b></span>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c2">
+    <div class="demo-head"><h3 id="c2">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code2" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Pick <b>Human</b>.<span class="see">About a petabyte of memory, more than a top GPU by ~15,000×, and over a year of laptop time per second of thought.</span></span></li>
+      <li><span>Drag inputs per neuron down to 100.<span class="see">Memory shrinks 17×. Connections, not neurons, are the wall.</span></span></li>
+      <li><span>Pick <b>Fruit fly</b>.<span class="see">It fits on a laptop, which is why Step 11 can load a real fly brain.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>More than connections</h2>
+  <p class="sub">Even with the right number of links, a real brain has layers of complexity that most models leave out.</p>
+  <div class="cx">
+    <div class="card"><h3>Dendrites compute</h3><p class="sub">One cortical neuron's branches behave like a small multi-layer network (a 2021 study needed 5–8 layers to mimic one).</p><p class="status no">Mini Brain: single points</p></div>
+    <div class="card"><h3>Thousands of cell types</h3><p class="sub">A 2023 atlas of the mouse brain found over 5,000 genetically distinct cell types.</p><p class="status no">Mini Brain: 2 (excitatory, inhibitory)</p></div>
+    <div class="card"><h3>Chemical moods</h3><p class="sub">Dopamine, serotonin and others reshape whole circuits within seconds.</p><p class="status">Mini Brain: coming in Step 7</p></div>
+    <div class="card"><h3>Unreliable synapses</h3><p class="sub">Many synapses fail to release on 50–90% of spikes, and that may help the brain learn.</p><p class="status no">Mini Brain: always reliable</p></div>
+    <div class="card"><h3>Travel delays</h3><p class="sub">Spikes take from under 1 ms to tens of ms to arrive, and timing shapes rhythms.</p><p class="status no">Mini Brain: instant</p></div>
+    <div class="card"><h3>Glia</h3><p class="sub">About as many glial cells as neurons. They feed, insulate, and even tune synapses.</p><p class="status no">Mini Brain: none</p></div>
+    <div class="card"><h3>Learning at every timescale</h3><p class="sub">From milliseconds (short-term changes) to years (structural growth).</p><p class="status">Mini Brain: STDP in Step 2</p></div>
+    <div class="card"><h3>Growth and pruning</h3><p class="sub">Synapses peak in early childhood, then up to half are pruned in some regions by adulthood.</p><p class="status no">Mini Brain: fixed wiring</p></div>
+  </div>
+
+  <h2>Do spiking networks have this?</h2>
+  <div class="card vs">
+    <div class="item"><h3>AI-style spiking networks</h3><div class="pair"><div class="r"><span>Connections</span>Hundreds to thousands per neuron, in rigid layers.</div><div class="m"><span>Missing</span>Local recurrent wiring, cell types, dendrites, chemistry.</div></div></div>
+    <div class="item"><h3>Neuromorphic chips</h3><div class="pair"><div class="r"><span>Connections</span>Limited by hardware: TrueNorth 256 per neuron; Hala Point ~110 on average.</div><div class="m"><span>Missing</span>Brain-like fan-in. They trade links for scale and energy savings.</div></div></div>
+    <div class="item"><h3>Brain-scale simulations</h3><div class="pair"><div class="r"><span>Connections</span>Realistic: thousands per neuron (e.g. the 2013 K-computer run, ~6,000).</div><div class="m"><span>Missing</span>Speed (40 minutes per second of brain), and still simple point neurons.</div></div></div>
+  </div>
+
+  <h2>Beyond the lab</h2>
+  <div class="card">
+    <h3>Emerging tech: mapping every connection</h3>
+    <ul>
+      <li><b>FlyWire (2024)</b> mapped a whole fruit fly brain: about 139,000 neurons and 50 million synapses.</li>
+      <li><b>H01 (2024)</b> mapped 1 mm³ of human cortex: about 57,000 cells and 150 million synapses, in 1.4 petabytes of images.</li>
+      <li><b>MICrONS (2025)</b> mapped 1 mm³ of mouse visual cortex, with over 500 million synapses, and recorded what those neurons did.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>For good</h3>
+    <ul>
+      <li><b>Safer brain surgery.</b> MRI tractography maps major wiring bundles so surgeons can avoid them when removing tumours.</li>
+      <li><b>Understanding disease.</b> Comparing wiring diagrams helps researchers study conditions where connectivity may differ, from epilepsy to neurodevelopmental disorders.</li>
+      <li><b>Efficient AI.</b> Learning from the brain's cheap wiring is one route to computers that use far less energy.</li>
+    </ul>
+  </div>
+
+  <h2>Key terms</h2>
+  <div class="card">
+    <dl class="terms">
+      <div><dt>Fan-in / fan-out</dt><dd>Number of inputs a neuron receives / outputs it sends.</dd></div>
+      <div><dt>Connectome</dt><dd>A complete wiring diagram of a nervous system.</dd></div>
+      <div><dt>Small-world network</dt><dd>Tight local clusters plus a few shortcuts: few hops, strong teams.</dd></div>
+      <div><dt>Clustering</dt><dd>How often a neuron's partners are also linked to each other.</dd></div>
+      <div><dt>Path length</dt><dd>Average number of hops between two neurons.</dd></div>
+      <div><dt>Synaptic event</dt><dd>One spike arriving at one synapse: the unit of simulation work.</dd></div>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3>Run it yourself</h3>
+    <p class="sub">The small-world model and the calculator in Python: <a href="https://github.com/cweekiat/mini-brain/blob/main/python/scaling_up.py">scaling_up.py</a></p>
+  </div>
+
+  <h2>Check yourself</h2>
+  <div class="card" id="quiz"></div>
+
+  <nav class="pager" aria-label="Pages">
+    <a href="../index.html#roadmap"><small>Back</small>Roadmap</a>
+    <a class="next" href="03-brain-waves.html"><small>Related</small>Step 3 · Brain waves</a>
+  </nav>
+</main>
+
+<footer><div class="wrap foot">Neuron counts: Azevedo et al. (2009). Wiring length: Marner et al. (2003). Small world: Watts &amp; Strogatz (1998). Connectomes: Dorkenwald et al. (2024); Shapson-Coe et al. (2024); MICrONS Consortium (2025). Dendrites: Beniaguev et al. (2021). Cell atlas: Yao et al. (2023).</div></footer>
+
+<script type="module">
+import { smallWorld, hopsFrom, metrics } from "../assets/sim/graph.js";
+import { slider, fitCanvas, css } from "../assets/plot.js";
+import { C, K, IN, OUT, paint } from "../assets/livecode.js";
+
+const $ = (id) => document.getElementById(id);
+const fmt = (x) => { // 1,234 · 1.2 million · 3.4 billion · 5.6 trillion …
+  const u = [[1e15, " quadrillion"], [1e12, " trillion"], [1e9, " billion"], [1e6, " million"]];
+  for (const [v, n] of u) if (x >= v) return (x / v).toFixed(x / v < 10 ? 1 : 0) + n;
+  return Math.round(x).toLocaleString();
+};
+const bytes = (b) => { const u = [[1e15, " PB"], [1e12, " TB"], [1e9, " GB"], [1e6, " MB"], [1e3, " KB"]]; for (const [v, n] of u) if (b >= v) return (b / v).toFixed(b / v < 10 ? 1 : 0) + n; return b + " B"; };
+const dur = (s) => { if (s < 1) return (s * 1000).toFixed(0) + " ms"; if (s < 60) return s.toFixed(1) + " s"; if (s < 3600) return (s / 60).toFixed(0) + " min"; if (s < 86400) return (s / 3600).toFixed(1) + " h"; if (s < 3.15e7) return (s / 86400).toFixed(0) + " days"; return (s / 3.15e7).toFixed(1) + " years"; };
+
+// Log-scale horizontal bars
+function bars(el, rows, { min = 1, max, labelFn = fmt } = {}) {
+  const lo = Math.log10(min), hi = Math.log10(max);
+  el.innerHTML = rows.map((r) => {
+    const w = Math.max(0.5, ((Math.log10(Math.max(r.v, min)) - lo) / (hi - lo)) * 78); // leave room for the label
+    return `<div class="hbar"><span class="who">${r.name}${r.note ? `<small>${r.note}</small>` : ""}</span>
+      <span class="track"><span class="fillb" style="width:${w}%;background:${r.color}"></span><span class="val" style="left:${w}%">${labelFn(r.v)}</span></span></div>`;
+  }).join("");
+}
+
+// ── Fan-in chart ─────────────────────────────────────────────────────
+const REAL = "var(--real)", MINI = "var(--model)", CHIP = "var(--label-2)";
+bars($("fanin"), [
+  { name: "Cerebellar granule cell", note: "most common neuron", v: 4, color: REAL },
+  { name: "C. elegans neuron", note: "average", v: 23, color: REAL },
+  { name: "Mini Brain, Step 3", v: 100, color: MINI },
+  { name: "Hala Point chip", note: "average", v: 111, color: CHIP },
+  { name: "TrueNorth chip", note: "maximum", v: 256, color: CHIP },
+  { name: "Fruit fly neuron", note: "average", v: 390, color: REAL },
+  { name: "Mini Brain, Step 4", v: 399, color: MINI },
+  { name: "Human brain", note: "average over all neurons", v: 1700, color: REAL },
+  { name: "Cortical pyramidal cell", note: "typical", v: 7000, color: REAL },
+  { name: "Hippocampal CA1 cell", v: 30000, color: REAL },
+  { name: "Purkinje cell", note: "most connected", v: 150000, color: REAL },
+], { min: 1, max: 300000 });
+
+// ── Demo 1: small world ──────────────────────────────────────────────
+const N1 = 200;
+const g = { K: 10, p: 0.05, adj: null, m: null, src: 0, hops: null };
+function rebuild() {
+  g.adj = smallWorld(N1, g.K, g.p, 1); g.m = metrics(g.adj); g.hops = hopsFrom(g.adj, g.src);
+  $("g-L").textContent = g.m.L.toFixed(1); $("g-C").textContent = g.m.C.toFixed(2);
+  $("g-max").textContent = Math.max(...g.hops) + " hops";
+  document.querySelectorAll(".presets button").forEach((b) => b.setAttribute("aria-pressed", Math.abs(+b.dataset.p - g.p) < 1e-9 && g.K === 10 ? "true" : "false"));
+  draw1(); code1();
+}
+const HOPC = ["--real", "--na", "--model", "--accent", "--k", "--label-2"];
+function draw1() {
+  const cv = $("net"), size = cv.clientWidth || 300, { ctx } = fitCanvas(cv, size);
+  const c = size / 2, R = size * 0.44, xy = (i) => [c + R * Math.cos((2 * Math.PI * i) / N1 - Math.PI / 2), c + R * Math.sin((2 * Math.PI * i) / N1 - Math.PI / 2)];
+  ctx.clearRect(0, 0, size, size);
+  ctx.strokeStyle = css("--sep"); ctx.lineWidth = 0.6; ctx.globalAlpha = 0.6; ctx.beginPath();
+  g.adj.forEach((nb, i) => nb.forEach((j) => { if (j > i) { const [a, b] = xy(i), [d, e] = xy(j); ctx.moveTo(a, b); ctx.lineTo(d, e); } }));
+  ctx.stroke(); ctx.globalAlpha = 1;
+  ctx.strokeStyle = css("--real"); ctx.lineWidth = 1.5; ctx.beginPath(); // links of the chosen neuron
+  for (const j of g.adj[g.src]) { const [a, b] = xy(g.src), [d, e] = xy(j); ctx.moveTo(a, b); ctx.lineTo(d, e); }
+  ctx.stroke();
+  for (let i = 0; i < N1; i++) {
+    const [x, y] = xy(i), h = g.hops[i];
+    ctx.fillStyle = css(HOPC[Math.min(h, HOPC.length - 1)]);
+    ctx.beginPath(); ctx.arc(x, y, i === g.src ? 6 : 3.2, 0, 7); ctx.fill();
+  }
+  const maxH = Math.max(...g.hops);
+  $("hoplegend").innerHTML = Array.from({ length: Math.min(maxH + 1, HOPC.length) }, (_, h) =>
+    `<span><i style="background:var(${HOPC[h]});height:8px;width:8px;border-radius:50%"></i>${h === 0 ? "chosen" : h === HOPC.length - 1 ? h + "+ hops" : h + (h === 1 ? " hop" : " hops")}</span>`).join("");
+}
+$("net").addEventListener("click", (e) => {
+  const r = $("net").getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2;
+  const a = Math.atan2(y, x) + Math.PI / 2;
+  g.src = ((Math.round((a / (2 * Math.PI)) * N1) % N1) + N1) % N1; g.hops = hopsFrom(g.adj, g.src);
+  $("g-max").textContent = Math.max(...g.hops) + " hops"; draw1(); code1();
+});
+slider("g-k", (v) => v, (v) => { g.K = v; if (g.adj) rebuild(); });
+slider("g-p", (v) => v + "%", (v) => { g.p = v / 100; if (g.adj) rebuild(); });
+document.querySelector(".presets").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-p]"); if (!b) return;
+  $("g-k").value = 10; $("g-k").dispatchEvent(new Event("input"));
+  $("g-p").value = Math.round(+b.dataset.p * 100); $("g-p").dispatchEvent(new Event("input"));
+});
+function code1() {
+  paint("code1", [
+    C("# inputs: the sliders"),
+    `N = 200; K = ${IN(g.K)}; p = ${IN(g.p.toFixed(2))}`,
+    "",
+    C("# 1. ring: link each neuron to its"),
+    C("#    K nearest neighbours"),
+    `edges = [(i, (i + d) % N) ${K("for")} i ${K("in")}`,
+    `    range(N) ${K("for")} d ${K("in")} range(1, K//2 + 1)]`,
+    C("# 2. rewire each link with chance p"),
+    C("#    to a random neuron (no self-links,"),
+    C("#    no duplicates); links are two-way"),
+    `${K("for")} i, j ${K("in")} edges:`,
+    `    ${K("if")} rng.random() &lt; p:`,
+    "        j = random_new_partner(i)",
+    "    link(i, j)",
+    "",
+    C("# 3. hops from neuron s: breadth-"),
+    C("#    first search, one ring at a time"),
+    `hops = bfs(adj, s=${IN(g.src)})`,
+    `${C("# → farthest:")} ${OUT(Math.max(...g.hops) + " hops")}`,
+    "L = mean(hops over all pairs)",
+    `${C("# →")} ${OUT(g.m.L.toFixed(2))}`,
+    C("# clustering: share of a neuron's"),
+    C("# partner pairs that are linked"),
+    `${C("# → C =")} ${OUT(g.m.C.toFixed(3))}`,
+  ]);
+}
+rebuild();
+
+// ── Demo 2: calculator ───────────────────────────────────────────────
+// N = neurons, S = synapses. Measured speed of this site's own simulator (one core,
+// plain JavaScript, Step 3 network): ~11 million synaptic events/s and ~34 million
+// neuron updates/s at dt = 0.1 ms.
+const BRAINS = {
+  worm: { N: 302, S: 7000 }, fly: { N: 139255, S: 54.5e6 }, mini: { N: 1000, S: 99900 },
+  mouse: { N: 7.1e7, S: 1e11 }, human: { N: 8.6e10, S: 1.5e14 },
+};
+const EV_PER_S = 11e6, UPD_PER_S = 34e6, STEPS_PER_S = 10000;
+const MACHINES = [
+  { name: "MacBook (24 GB)", bytes: 24e9 },
+  { name: "Top GPU (80 GB)", bytes: 80e9 },
+  { name: "Intel Hala Point", note: "neuromorphic, 2024", syn: 128e9 },
+  { name: "Fugaku supercomputer", note: "~4.85 PB", bytes: 4.85e15 },
+];
+const b = { brain: "human", N: 8.6e10, K: 1744, rate: 1, B: 8 };
+function setBrain(key) { const x = BRAINS[key]; b.brain = key; b.N = x.N; b.K = x.S / x.N; $("b-k").value = Math.log10(b.K).toFixed(2); $("b-k").dispatchEvent(new Event("input")); }
+$("b-brain").onchange = (e) => setBrain(e.target.value);
+$("b-bytes").onchange = (e) => { b.B = +e.target.value; update2(); };
+slider("b-k", (v) => Math.round(10 ** v).toLocaleString(), (v) => { b.K = 10 ** v; update2(); });
+slider("b-rate", (v) => v.toFixed(1) + " Hz", (v) => { b.rate = v; update2(); });
+function calc() {
+  const syn = b.N * b.K, mem = syn * b.B, ev = b.N * b.rate * b.K;
+  const time = ev / EV_PER_S + (b.N * STEPS_PER_S) / UPD_PER_S;
+  return { syn, mem, ev, time };
+}
+function update2() {
+  const r = calc();
+  $("b-syn").textContent = fmt(r.syn); $("b-mem").textContent = bytes(r.mem);
+  $("b-ev").textContent = fmt(r.ev); $("b-time").textContent = dur(r.time);
+  const rows = MACHINES.map((m) => ({ name: m.name, note: m.note, v: m.syn ?? m.bytes / b.B, color: CHIP }));
+  rows.push({ name: "Your chosen brain", note: "synapses needed", v: r.syn, color: REAL });
+  bars($("fit"), rows, { min: 1e3, max: 1e16 });
+  code2(r);
+}
+function code2(r) {
+  const fitN = (24e9 / b.B) / b.K;
+  paint("code2", [
+    C("# inputs"),
+    `N = ${IN(fmt(b.N))}  ${C("# neurons")}`,
+    `K = ${IN(Math.round(b.K).toLocaleString())}  ${C("# inputs per neuron")}`,
+    `rate = ${IN(b.rate.toFixed(1))}  ${C("# spikes/s per neuron")}`,
+    `B = ${IN(b.B)}  ${C("# bytes per synapse")}`,
+    "",
+    "synapses = N * K",
+    `${C("# →")} ${OUT(fmt(r.syn))}`,
+    "memory = synapses * B",
+    `${C("# →")} ${OUT(bytes(r.mem))}`,
+    "events = N * rate * K  " + C("# per s"),
+    `${C("# →")} ${OUT(fmt(r.ev))}`,
+    "",
+    C("# laptop speed measured on this"),
+    C("# site's simulator (1 core, JS):"),
+    "EV, UPD = 11e6, 34e6  " + C("# per s"),
+    "steps = 10_000  " + C("# dt = 0.1 ms"),
+    "t = events / EV + N * steps / UPD",
+    `${C("# → 1 s of brain:")} ${OUT(dur(r.time))}`,
+    "",
+    "fits = 24e9 / B / K  " + C("# MacBook"),
+    `${C("# →")} ${OUT(fmt(fitN) + " neurons")}`,
+  ]);
+}
+setBrain("human");
+addEventListener("resize", draw1);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw1);
+
+// ── Quiz ─────────────────────────────────────────────────────────────
+const QUIZ = [
+  { q: "Which limits a laptop brain simulation most?", o: ["The number of neurons", "The number of connections", "The firing rate"], a: 1,
+    why: "Each neuron has thousands of synapses to store and update. Memory scales with N × K." },
+  { q: "What does adding a few long-range shortcuts do?", o: ["Destroys local teams", "Cuts the hops between neurons while keeping local clusters", "Nothing much"], a: 1,
+    why: "That's the small-world effect: 5% shortcuts cut average hops by about two-thirds." },
+  { q: "Why is the brain-wide average of ~1,700 inputs misleading?", o: ["It's measured wrong", "Most neurons are granule cells with ~4 inputs, while cortical cells have thousands", "Synapses don't count"], a: 1,
+    why: "69 of the 86 billion neurons are tiny cerebellar granule cells, which drag the average down." },
+];
+$("quiz").innerHTML = QUIZ.map((x, i) => `
+  <div class="q" role="group" aria-labelledby="q${i}"><h3 id="q${i}">${i + 1}. ${x.q}</h3>
+  <div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div>
+  <p class="why" id="why-${i}" aria-live="polite"></p></div>`).join("");
+$("quiz").addEventListener("click", (e) => {
+  const bt = e.target.closest("button[data-q]"); if (!bt) return;
+  const x = QUIZ[+bt.dataset.q], right = +bt.dataset.o === x.a;
+  bt.parentElement.querySelectorAll("button").forEach((o) => o.classList.remove("right", "wrong"));
+  bt.classList.add(right ? "right" : "wrong");
+  $("why-" + bt.dataset.q).textContent = (right ? "✓ Correct. " : "✕ Not quite. ") + x.why;
+});
+</script>
+</body>
+</html>

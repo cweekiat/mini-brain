@@ -31,6 +31,10 @@ Every step is a web page with:
 | 11 | A whole fruit-fly brain (FlyWire connectome) | Anatomical | ⏳ |
 | 12 | The whole human brain as ~80 connected regions | Anatomical | ⏳ |
 
+## Side trips
+
+- **How connected is the brain?** (`steps/scaling-up.html`): connections per neuron across the brain, a small-world wiring demo, and a calculator for what simulating any brain would take
+
 ## Python versions
 
 Every step has a plain-Python version of its models in `python/` (NumPy + Matplotlib), matching the live code panels:
