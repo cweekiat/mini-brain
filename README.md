@@ -22,7 +22,7 @@ Every step is a web page with:
 | 2 | Two neurons that learn: synapses, STDP, Pavlov's bell | Cellular | ✅ |
 | 3 | Brain waves from 1,000 neurons: E/I network, gamma, EEG spectrum | Physiological | ✅ |
 | 4 | Memory recall: Hopfield network, pattern completion, capacity and synapse loss | Physiological | ✅ |
-| 5 | Working memory | Physiological | ⏳ |
+| 5 | Working memory: ring bump attractor, drift, distractors, slow NMDA synapses | Physiological | ✅ |
 | 6 | Decisions | Physiological | ⏳ |
 | 7 | Learning from reward (dopamine) | Physiological | ⏳ |
 | 8 | Vision: learning to read digits | Physiological | ⏳ |

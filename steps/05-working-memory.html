@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Working memory · Mini Brain</title>
+<meta name="description" content="Step 5: a ring of neurons holds a location in mind after the cue is gone. Persistent activity, drift, distractors and slow NMDA synapses.">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M18 56h20l8-30 9 48 7-18h20' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="../assets/style.css?v=4">
+<style>
+  .ring-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 14px; align-items: center; }
+  canvas.ringc { width: 100%; aspect-ratio: 1; display: block; cursor: pointer; touch-action: manipulation; }
+  @media (max-width: 480px) { .ring-wrap { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="navbar"><div class="wrap">
+  <a class="back" href="../index.html#roadmap">Roadmap</a>
+  <span class="meta">Step 5 of 12</span>
+</div></header>
+
+<main class="wrap" id="main">
+  <p class="eyebrow">Step 5 · Circuits</p>
+  <h1>Working memory</h1>
+  <p class="lede">Holding a thought after the input is gone.</p>
+
+  <div class="card">
+    <h3>You'll learn</h3>
+    <ul class="goals">
+      <li>How neurons keep firing with nothing to look at</li>
+      <li>Why memories get fuzzier the longer you hold them</li>
+      <li>Why slow synapses matter, and what distraction does</li>
+      <li>The Python behind a “bump attractor”</li>
+    </ul>
+  </div>
+
+  <h2>The idea</h2>
+  <div class="card">
+    <p class="idea">Working memory is an <b>echo that keeps itself going</b>. A flash starts a group of neurons firing, and they keep re-exciting each other after the flash is gone.</p>
+    <ul>
+      <li><b>Neighbours excite each other</b>, so the echo stays in one place: a “bump” of activity.</li>
+      <li><b>Everyone inhibits everyone</b>, so only one bump survives, and quiet stays quiet.</li>
+      <li><b>Random noise nudges the bump</b>, so the memory slowly drifts.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>New tool: rate models</h3>
+    <p class="sub">From this step, each neuron is described by its <b>firing rate</b> (Step 1's “how often”) instead of every single spike. Rates change smoothly, so big circuits run fast. It's how most large brain models work.</p>
+  </div>
+
+  <h2>Demo 1 · Remember where it flashed</h2>
+  <p class="sub">Like the classic monkey task: a spot flashes, disappears, and the brain must hold where it was.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d1">
+    <div class="demo-head"><h3 id="d1">A ring of 100 neurons</h3><span class="speed">Real time</span></div>
+    <div class="ring-wrap">
+      <div>
+        <canvas class="ringc" id="ring" role="img" aria-label="Ring of 100 neurons; brighter means firing faster. Tap the ring to flash a spot."></canvas>
+        <p class="foot" style="margin:4px 0 0;text-align:center">Tap the ring to flash a spot</p>
+      </div>
+      <div>
+        <p class="foot" style="margin:0 0 4px">Activity over the last 4 s (each row is a neuron)</p>
+        <canvas class="plot" id="heat" role="img" aria-label="Space-time plot: neuron preferred angle against time, brighter is more active"></canvas>
+        <div class="legend"><span><i style="background:var(--na)"></i>Flash / distractor</span><span><i style="background:var(--model)"></i>Memory read-out</span></div>
+      </div>
+    </div>
+    <div class="stats">
+      <span class="stat">Flashed at<b id="w-cue">–</b></span>
+      <span class="stat">Remembered<b id="w-mem">–</b></span>
+      <span class="stat">Error<b id="w-err">–</b></span>
+      <span class="stat">Held for<b id="w-held">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="w-j1">Reverberation <output for="w-j1"></output></label><input type="range" id="w-j1" min="8" max="16" step="0.5" value="12"><p class="hint">How strongly neighbours excite each other</p></div>
+      <div class="ctrl"><label for="w-tau">Synapse speed (τ) <output for="w-tau"></output></label><input type="range" id="w-tau" min="10" max="150" step="10" value="100"><p class="hint">Slow (NMDA-like) or fast</p></div>
+      <div class="ctrl"><label for="w-noise">Noise <output for="w-noise"></output></label><input type="range" id="w-noise" min="0" max="1.2" step="0.1" value="0.5"><p class="hint">Random jostling</p></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="w-flash">Flash Random Spot</button>
+      <button id="w-near">Distract Nearby</button>
+      <button id="w-far">Distract Far</button>
+      <button id="w-clear">Clear</button>
+      <button id="w-pause">Pause</button>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c1">
+    <div class="demo-head"><h3 id="c1">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code1" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Tap the ring.<span class="see">A bump appears and stays after the flash ends. That's persistent activity: the memory.</span></span></li>
+      <li><span>Lower reverberation to 10.<span class="see">The bump fades. Too little self-excitation, and the memory is forgotten.</span></span></li>
+      <li><span>Set synapse speed to 10 ms.<span class="see">The bump wanders much more. Slow synapses keep memories steady.</span></span></li>
+      <li><span>Press <b>Distract Nearby</b>, then <b>Distract Far</b>.<span class="see">Nearby pulls the memory over. Far away is ignored.</span></span></li>
+      <li><span>Raise noise to 1.2 and wait.<span class="see">Bumps can appear from nothing: noise creates a false memory.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>How real working memory works</h2>
+  <div class="card">
+    <h3>1. Neurons that keep firing</h3>
+    <p>In 1989, recordings from monkeys doing this exact task found <b>prefrontal cortex</b> neurons that fired through the whole delay, each one for its own location. When they stopped early, the monkey made a mistake.</p>
+  </div>
+  <div class="card">
+    <h3>2. Why slow synapses matter</h3>
+    <ul>
+      <li>Prefrontal circuits rely on <b>NMDA receptors</b>, whose currents last ~100 ms, far longer than the ~3 ms of Step 3's AMPA.</li>
+      <li>Slow currents smooth out noise, so the echo stays put.</li>
+      <li><b>Ketamine</b>, which blocks NMDA receptors, impairs working memory in people. The fast-synapse setting is a toy version of that.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>3. Memories drift</h3>
+    <p class="sub">Ask people to remember a location, and their error grows with the delay. In 2014, researchers matched these errors to the random drift of bumps in monkey prefrontal cortex, the same drift as Demo 2.</p>
+  </div>
+
+  <h2>Demo 2 · Fuzzier with time</h2>
+  <p class="sub">Run 30 trials. Each flashes a spot, waits up to 6 s, then reads out where the network thinks it was.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d2">
+    <div class="demo-head"><h3 id="d2">Memory error vs delay</h3><span class="speed">Computed</span></div>
+    <canvas class="plot" id="drift" role="img" aria-label="Average memory error in degrees against delay in seconds"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Your settings</span><span><i style="background:var(--label-2)"></i>Slow synapses (τ = 100 ms), noise 0.5</span></div>
+    <div class="stats">
+      <span class="stat">Error at 1 s<b id="e1">–</b></span>
+      <span class="stat">Error at 6 s<b id="e6">–</b></span>
+      <span class="stat">Forgotten<b id="lost">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="d-tau">Synapse speed (τ) <output for="d-tau"></output></label><input type="range" id="d-tau" min="10" max="150" step="10" value="20"></div>
+      <div class="ctrl"><label for="d-noise">Noise <output for="d-noise"></output></label><input type="range" id="d-noise" min="0.1" max="1" step="0.1" value="0.5"></div>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c2">
+    <div class="demo-head"><h3 id="c2">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code2" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Start at τ = 20 ms.<span class="see">Error grows with every second of waiting, from ~4° to ~10°.</span></span></li>
+      <li><span>Slide τ to 100 ms.<span class="see">The curve flattens: the grey reference. Slow synapses protect the memory.</span></span></li>
+      <li><span>Raise noise to 1.0.<span class="see">More drift, and some trials are forgotten.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>The equations</h2>
+  <div class="card">
+    <h3>Equation 1 · Each neuron's rate</h3>
+    <div class="eq" role="math" aria-label="tau d r i by d t equals minus r i plus f of I i">
+      <span class="ln"><i>τ</i> · d<i>r<sub>i</sub></i>/d<i>t</i> = −<i>r<sub>i</sub></i> + <i>f</i>(<i>I<sub>i</sub></i>)</span>
+      <span class="ln"><i>I<sub>i</sub></i> = Σ<sub><i>j</i></sub> <i>W<sub>ij</sub></i> <i>r<sub>j</sub></i> + <i>I</i><sub>0</sub> + <i>I</i><sub>cue</sub> + noise</span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>r<sub>i</sub></i></span><span>Firing rate of neuron <i>i</i>: 0 = silent, 1 = flat out.</span></div>
+      <div><span class="sym"><i>f</i></span><span>Response curve: 0 below threshold, then rising and levelling off (tanh).</span></div>
+      <div><span class="sym"><i>τ</i></span><span>How fast rates follow their input. Set by the slow synapses.</span></div>
+      <div><span class="sym"><i>I</i><sub>0</sub> = −0.4</span><span>Background input, just below threshold, so the ring rests quietly.</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Equation 2 · The ring's wiring</h3>
+    <div class="eq" role="math" aria-label="W i j equals J 0 plus J 1 cos of theta i minus theta j, all over N">
+      <span class="ln"><i>W<sub>ij</sub></i> = (<i>J</i><sub>0</sub> + <i>J</i><sub>1</sub> cos(<i>θ<sub>i</sub></i> − <i>θ<sub>j</sub></i>)) / <i>N</i></span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>θ<sub>i</sub></i></span><span>The direction neuron <i>i</i> prefers.</span></div>
+      <div><span class="sym"><i>J</i><sub>1</sub> = 12</span><span>Reverberation: similar neurons excite each other.</span></div>
+      <div><span class="sym"><i>J</i><sub>0</sub> = −2</span><span>Everyone inhibits everyone, so only one bump survives.</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Equation 3 · Reading the memory out</h3>
+    <div class="eq" role="math" aria-label="remembered angle equals the angle of the sum of r i times the unit vector at theta i">
+      <span class="ln">memory = angle of Σ<sub><i>i</i></sub> <i>r<sub>i</sub></i> · (cos <i>θ<sub>i</sub></i>, sin <i>θ<sub>i</sub></i>)</span>
+    </div>
+    <p class="sub">Each neuron “votes” for its direction, weighted by how fast it fires. This <b>population vector</b> is also how brain–computer interfaces read movement intentions.</p>
+  </div>
+
+  <h2>Real vs our model</h2>
+  <div class="card vs">
+    <div class="item"><h3>Neurons</h3><div class="pair"><div class="r"><span>Real</span>Thousands of spiking prefrontal neurons.</div><div class="m"><span>Our model</span>100 firing rates on a ring.</div></div></div>
+    <div class="item"><h3>Persistent firing</h3><div class="pair"><div class="r"><span>Real</span>Seen in monkey prefrontal cortex through the delay.</div><div class="m"><span>Our model</span>The bump ✓</div></div></div>
+    <div class="item"><h3>Drift</h3><div class="pair"><div class="r"><span>Real</span>Errors grow with delay, a few degrees.</div><div class="m"><span>Our model</span>Same trend ✓</div></div></div>
+    <div class="item"><h3>Capacity</h3><div class="pair"><div class="r"><span>Real</span>About 3–4 items at once.</div><div class="m"><span>Our model</span>One. Strong inhibition allows a single bump.</div></div></div>
+    <div class="item"><h3>Mechanism</h3><div class="pair"><div class="r"><span>Real</span>Still debated: some memories may be held “silently” in short-term synapse changes.</div><div class="m"><span>Our model</span>Only persistent firing.</div></div></div>
+  </div>
+
+  <h2>Beyond the lab</h2>
+  <div class="card">
+    <h3>Emerging tech</h3>
+    <ul>
+      <li><b>A real ring in a fly's brain.</b> In 2015, scientists watched a bump of activity move around a literal ring of neurons in the fruit fly, tracking which way it faced. Step 11 explores the fly brain.</li>
+      <li><b>Robots with a sense of direction.</b> Ring attractors have been run on neuromorphic chips to help robots keep track of their heading.</li>
+      <li><b>Reading intentions.</b> Brain–computer interfaces decode movement with the same population-vector idea as Equation 3.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>For good</h3>
+    <ul>
+      <li><b>Schizophrenia research.</b> Working-memory problems are a core symptom. One leading idea is weakened NMDA signalling, which models like this make testable.</li>
+      <li><b>Ageing.</b> In a 2019 study, gentle rhythmic brain stimulation briefly improved working memory in older adults.</li>
+      <li><b>ADHD.</b> Common medications act on dopamine and noradrenaline in prefrontal cortex, which tune exactly these circuits.</li>
+    </ul>
+  </div>
+
+  <h2>Key terms</h2>
+  <div class="card">
+    <dl class="terms">
+      <div><dt>Working memory</dt><dd>Holding information in mind for seconds, to use it.</dd></div>
+      <div><dt>Persistent activity</dt><dd>Neurons that keep firing after the stimulus is gone.</dd></div>
+      <div><dt>Bump attractor</dt><dd>A self-sustaining bump of activity that can sit anywhere on a ring.</dd></div>
+      <div><dt>Prefrontal cortex</dt><dd>The front of the brain, key for working memory and planning.</dd></div>
+      <div><dt>NMDA receptor</dt><dd>A slow glutamate receptor. Its long currents steady persistent activity.</dd></div>
+      <div><dt>Rate model</dt><dd>Describes neurons by firing rate instead of individual spikes.</dd></div>
+      <div><dt>Population vector</dt><dd>Reading a value out by letting each neuron vote for its preference.</dd></div>
+      <div><dt>Drift</dt><dd>Slow random wandering of a held memory.</dd></div>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3>Run it yourself</h3>
+    <p class="sub">The same ring in NumPy: <a href="https://github.com/cweekiat/mini-brain/blob/main/python/step05_working_memory.py">step05_working_memory.py</a></p>
+  </div>
+
+  <h2>Check yourself</h2>
+  <div class="card" id="quiz"></div>
+
+  <div class="card">
+    <label class="toggle" style="font-size:1.0625rem"><input type="checkbox" id="done"> Mark Step 5 as done</label>
+  </div>
+
+  <nav class="pager" aria-label="Steps">
+    <a href="04-memory.html"><small>Previous</small>Memory recall</a>
+    <span class="next"><small>Next · Coming soon</small>Decisions</span>
+  </nav>
+</main>
+
+<footer><div class="wrap foot">Funahashi, Bruce &amp; Goldman-Rakic (1989), J. Neurophysiol. 61:331. Compte et al. (2000), Cereb. Cortex 10:910. Wimmer et al. (2014), Nat. Neurosci. 17:431. Seelig &amp; Jayaraman (2015), Nature 521:186. Reinhart &amp; Nguyen (2019), Nat. Neurosci. 22:820.</div></footer>
+
+<script type="module">
+import { N, THETA, Ring, wrap, deg } from "../assets/sim/ring.js";
+import { xyPlot, slider, fitCanvas, css } from "../assets/plot.js";
+import { C, K, IN, OUT, num, paint } from "../assets/livecode.js";
+import { isDone, setDone } from "../assets/steps.js";
+
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DT = 1; // ms
+const degTxt = (a) => Math.round((deg(a) + 360) % 360) + "°";
+function rgb(hex) { const h = hex.replace("#", ""); return [0, 2, 4].map((k) => parseInt(h.slice(k, k + 2), 16)); }
+
+// ── Demo 1 ───────────────────────────────────────────────────────────
+const ring = new Ring(1);
+const d1 = { paused: reduceMotion, cueAt: null, cueOffAt: null, pulse: null, hist: [], lastExt: "none" };
+const HIST = 200, SAMPLE = 20; // 200 columns × 20 ms = 4 s
+const pauseBtn = $("w-pause");
+const label = () => (pauseBtn.textContent = d1.paused ? "Play" : "Pause"); label();
+pauseBtn.onclick = () => { d1.paused = !d1.paused; label(); };
+slider("w-j1", (v) => v.toFixed(1), (v) => (ring.J1 = v));
+slider("w-tau", (v) => v + " ms", (v) => (ring.tau = v));
+slider("w-noise", (v) => v.toFixed(1), (v) => (ring.noise = v));
+
+// A pulse of outside input: kind = "cue" | "distract" | "clear"
+function pulse(kind, at, strength, ms) { d1.pulse = { kind, at, strength, end: ring.t + ms }; if (d1.paused) pauseBtn.click(); }
+function flash(at) { d1.cueAt = at; d1.cueOffAt = ring.t + 250; pulse("cue", at, 2, 250); }
+$("ring").addEventListener("click", (e) => {
+  const r = $("ring").getBoundingClientRect(), x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2;
+  flash(Math.atan2(y, x));
+});
+$("w-flash").onclick = () => flash(Math.random() * 2 * Math.PI - Math.PI);
+$("w-near").onclick = () => { const m = ring.decode(); pulse("distract", m.angle + Math.PI / 4, 1, 250); };
+$("w-far").onclick = () => { const m = ring.decode(); pulse("distract", m.angle + Math.PI, 2, 250); };
+$("w-clear").onclick = () => { pulse("clear", 0, 1.5, 200); d1.cueAt = null; };
+
+function frame1() {
+  for (let s = 0; s < 16; s++) { // 16 ms of brain time per frame ≈ real time
+    const p = d1.pulse;
+    if (p && ring.t < p.end) {
+      if (p.kind === "clear") ring.inhibit(p.strength); else ring.cue(p.at, p.strength);
+      d1.lastExt = p;
+    } else if (p) { ring.release(); d1.pulse = null; d1.lastExt = "none"; }
+    ring.step(DT);
+    if (Math.round(ring.t) % SAMPLE === 0) {
+      d1.hist.push({ r: Float32Array.from(ring.r), cue: d1.pulse && d1.pulse.kind !== "clear" ? d1.pulse.at : null, mem: bumpOn() ? ring.decode().angle : null });
+      if (d1.hist.length > HIST) d1.hist.shift();
+    }
+  }
+}
+const bumpOn = () => Math.max(...ring.r) > 0.3;
+function draw1() {
+  // Ring
+  const cv = $("ring"), size = cv.clientWidth || 240, { ctx } = fitCanvas(cv, size);
+  const cx = size / 2, cy = size / 2, R = size * 0.38, acc = rgb(css("--accent")), base = css("--fill");
+  ctx.clearRect(0, 0, size, size);
+  ctx.strokeStyle = base; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+  for (let i = 0; i < N; i++) {
+    const a = THETA[i], r = ring.r[i];
+    ctx.fillStyle = r > 0.02 ? `rgba(${acc},${0.15 + 0.85 * r})` : base;
+    ctx.beginPath(); ctx.arc(cx + R * Math.cos(a), cy + R * Math.sin(a), 3 + 5 * r, 0, 7); ctx.fill();
+  }
+  if (d1.cueAt !== null) { // where it flashed: hollow marker
+    ctx.strokeStyle = css("--na"); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(cx + (R + 16) * Math.cos(d1.cueAt), cy + (R + 16) * Math.sin(d1.cueAt), 6, 0, 7); ctx.stroke();
+    if (d1.pulse && d1.pulse.kind === "cue") { ctx.fillStyle = css("--na"); ctx.fill(); }
+  }
+  if (bumpOn()) { // memory read-out arrow
+    const m = ring.decode().angle; ctx.strokeStyle = css("--model"); ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + (R - 14) * Math.cos(m), cy + (R - 14) * Math.sin(m)); ctx.stroke();
+  }
+  // Heat map (angle × time) drawn through an off-screen image
+  const hv = $("heat"), { ctx: h, w, h: H } = fitCanvas(hv, 180);
+  const img = new ImageData(HIST, N), bg = rgb(css("--bg"));
+  d1.hist.forEach((col, x) => { for (let i = 0; i < N; i++) { const v = Math.min(1, col.r[i]), k = ((N - 1 - i) * HIST + (HIST - d1.hist.length + x)) * 4;
+    for (let c = 0; c < 3; c++) img.data[k + c] = bg[c] + (acc[c] - bg[c]) * v; img.data[k + 3] = 255; } });
+  for (let x = 0; x < HIST - d1.hist.length; x++) for (let i = 0; i < N; i++) { const k = (i * HIST + x) * 4; for (let c = 0; c < 3; c++) img.data[k + c] = bg[c]; img.data[k + 3] = 255; }
+  const off = new OffscreenCanvas(HIST, N); off.getContext("2d").putImageData(img, 0, 0);
+  h.imageSmoothingEnabled = false; h.clearRect(0, 0, w, H); h.drawImage(off, 0, 0, w, H);
+  const y = (a) => H * (1 - ((a + 2 * Math.PI) % (2 * Math.PI)) / (2 * Math.PI));
+  h.fillStyle = css("--model");
+  d1.hist.forEach((col, x) => { const px = ((HIST - d1.hist.length + x) / HIST) * w; if (col.mem !== null) h.fillRect(px, y(col.mem) - 1, 2, 2); });
+  h.fillStyle = css("--na");
+  d1.hist.forEach((col, x) => { const px = ((HIST - d1.hist.length + x) / HIST) * w; if (col.cue !== null) h.fillRect(px, y(col.cue) - 3, 2, 6); });
+  // Stats
+  $("w-cue").textContent = d1.cueAt === null ? "–" : degTxt(d1.cueAt);
+  if (bumpOn()) {
+    const m = ring.decode().angle; $("w-mem").textContent = degTxt(m);
+    $("w-err").textContent = d1.cueAt === null ? "–" : Math.abs(deg(wrap(m - d1.cueAt))).toFixed(1) + "°";
+    $("w-held").textContent = d1.cueOffAt !== null && ring.t > d1.cueOffAt ? ((ring.t - d1.cueOffAt) / 1000).toFixed(1) + " s" : "–";
+  } else { $("w-mem").textContent = d1.cueAt === null ? "–" : "Forgotten"; $("w-err").textContent = "–"; $("w-held").textContent = "–"; }
+}
+function code1() {
+  const p = d1.lastExt, ext = p === "none" ? `${IN("none")}` : p.kind === "clear" ? `${IN("−" + p.strength)} ${C("everywhere (clear)")}` : `bump(${IN(degTxt(p.at))}, ${IN(p.strength)})`;
+  const m = ring.decode();
+  paint("code1", [
+    C("# fixed: N = 100, θ = preferred angles"),
+    C("# W[i, j] = (J0 + J1·cos(θi − θj)) / N"),
+    C("# J0 = −2, I0 = −0.4, dt = 1 ms"),
+    C("# inputs: sliders and buttons"),
+    `J1 = ${IN(ring.J1.toFixed(1))}  ${C("# reverberation")}`,
+    `tau = ${IN(ring.tau)}  ${C("# ms")}`,
+    `noise = ${IN(ring.noise.toFixed(1))}`,
+    `ext = ${ext}`,
+    C("# bump(at, s): s·exp(−d²/(2·0.5²)),"),
+    C("# d = angle from `at`"),
+    "",
+    C("# every 1 ms:"),
+    "I = W @ r + I0 + ext \\\\",
+    "    + noise * randn(N) / sqrt(dt)",
+    "r += dt / tau * (-r + f(I))",
+    C("# f(x) = tanh(x) if x &gt; 0 else 0"),
+    C("# (the browser gets W @ r from a"),
+    C("#  cosine shortcut: same numbers)"),
+    `${C("# → max rate")} ${OUT(Math.max(...ring.r).toFixed(2))}`,
+    "",
+    C("# read out: population vector"),
+    "angle = np.arctan2(r @ np.sin(θ),",
+    "                   r @ np.cos(θ))",
+    `${C("# →")} ${OUT(bumpOn() ? degTxt(m.angle) : "no bump: forgotten")}`,
+  ]);
+}
+
+// ── Demo 2 ───────────────────────────────────────────────────────────
+const DELAYS = [500, 1000, 2000, 3000, 4000, 5000, 6000], TRIALS = 30;
+const d2 = { tau: 20, noise: 0.5, curves: {}, cur: null };
+function driftCurve(tau, noise, done) {
+  const key = tau + "/" + noise; if (d2.curves[key]) return done(d2.curves[key]);
+  const err = DELAYS.map(() => []); let lost = 0, k = 0;
+  (function next() {
+    for (let n = 0; n < 3 && k < TRIALS; n++, k++) { // 3 trials per slice keeps the page responsive
+      const r = new Ring(100 + k); Object.assign(r, { tau, noise });
+      const at = (k * 2.399) % (2 * Math.PI);
+      r.cue(at, 2); for (let t = 0; t < 250; t++) r.step(DT); r.release();
+      for (let t = 1, j = 0; t <= 6000; t++) {
+        r.step(DT);
+        if (t === DELAYS[j]) { if (Math.max(...r.r) < 0.3) { lost++; break; } err[j].push(deg(wrap(r.decode().angle - at))); j++; }
+      }
+    }
+    if (k < TRIALS) return setTimeout(next, 0);
+    const rms = err.map((e) => (e.length ? Math.sqrt(e.reduce((a, x) => a + x * x, 0) / e.length) : null));
+    d2.curves[key] = { rms, lost }; done(d2.curves[key]);
+  })();
+}
+function draw2() {
+  const ref = d2.curves["100/0.5"], cur = d2.cur;
+  const series = [];
+  const pts = (c) => DELAYS.map((d, j) => [d / 1000, c.rms[j]]).filter((p) => p[1] !== null);
+  if (ref) series.push({ points: pts(ref), color: "--label-2" });
+  if (cur) series.push({ points: pts(cur), color: "--accent" });
+  const top = Math.max(5, ...series.flatMap((s) => s.points.map((p) => p[1])));
+  xyPlot($("drift"), { height: 190, xMax: 6, yMax: Math.ceil(top / 5) * 5, xLabel: "delay (s)", yLabel: "error (°)", series });
+  if (cur) {
+    $("e1").textContent = cur.rms[1] === null ? "–" : cur.rms[1].toFixed(1) + "°";
+    $("e6").textContent = cur.rms[6] === null ? "–" : cur.rms[6].toFixed(1) + "°";
+    $("lost").textContent = cur.lost + " of " + TRIALS;
+  }
+  code2();
+}
+function update2() { $("e1").textContent = $("e6").textContent = $("lost").textContent = "…"; driftCurve(d2.tau, d2.noise, (c) => { d2.cur = c; draw2(); }); }
+let t2 = null;
+slider("d-tau", (v) => v + " ms", (v) => { d2.tau = v; clearTimeout(t2); t2 = setTimeout(update2, 150); });
+slider("d-noise", (v) => v.toFixed(1), (v) => { d2.noise = v; clearTimeout(t2); t2 = setTimeout(update2, 150); });
+function code2() {
+  const c = d2.cur;
+  paint("code2", [
+    C("# inputs: the sliders"),
+    `tau = ${IN(d2.tau)}  ${C("# ms")}`,
+    `noise = ${IN(d2.noise.toFixed(1))}`,
+    "delays = [500, 1000, 2000, … 6000]",
+    "",
+    `${K("for")} k ${K("in")} range(30):`,
+    "    at = (k * 2.399) % (2 * np.pi)",
+    "    ring = Ring(tau, noise)",
+    `    ${C("# flash for 250 ms, then wait")}`,
+    "    ring.run(250, ext=bump(at, 2))",
+    `    ${K("for")} t ${K("in")} range(1, 6001):`,
+    "        ring.step(dt=1)",
+    `        ${K("if")} t ${K("in")} delays:`,
+    `            ${K("if")} ring.r.max() &lt; 0.3:`,
+    `                lost += 1; ${K("break")}`,
+    "            err[t].append(wrap(",
+    "                ring.decode() - at))",
+    "",
+    "rms = {t: np.sqrt(np.mean(np.square(e)))",
+    "       for t, e in err.items()}",
+    `${C("# → 1 s")} ${OUT(c && c.rms[1] !== null ? c.rms[1].toFixed(1) + "°" : "…")}  ${C("6 s")} ${OUT(c && c.rms[6] !== null ? c.rms[6].toFixed(1) + "°" : "…")}`,
+    `${C("# → forgotten")} ${OUT(c ? c.lost + "/30" : "…")}`,
+  ]);
+}
+
+// ── Start ────────────────────────────────────────────────────────────
+for (let t = 0; t < 300; t++) ring.step(DT); // settle at rest
+(function loop() {
+  if (!d1.paused) frame1();
+  draw1(); code1();
+  requestAnimationFrame(loop);
+})();
+driftCurve(100, 0.5, () => update2());
+addEventListener("resize", draw2);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw2);
+
+// ── Quiz ─────────────────────────────────────────────────────────────
+const QUIZ = [
+  { q: "After the flash is gone, what keeps the memory alive?", o: ["The eyes keep seeing it", "Neighbouring neurons keep re-exciting each other", "One neuron stores it"], a: 1,
+    why: "Reverberation: the bump sustains itself through its own connections." },
+  { q: "Making the synapses fast (τ = 10 ms) makes the memory…", o: ["Steadier", "Drift more", "Disappear instantly"], a: 1,
+    why: "Slow synapses average out noise. Fast ones let noise push the bump around." },
+  { q: "Why is a far-away distractor ignored, but a nearby one pulls the memory?", o: ["The bump inhibits far neurons, but nearby input overlaps its edge", "Far distractors are weaker", "Nearby ones are brighter"], a: 0,
+    why: "Broad inhibition silences the rest of the ring, while nearby input adds to one side of the bump and shifts it." },
+];
+$("quiz").innerHTML = QUIZ.map((x, i) => `
+  <div class="q" role="group" aria-labelledby="q${i}"><h3 id="q${i}">${i + 1}. ${x.q}</h3>
+  <div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div>
+  <p class="why" id="why-${i}" aria-live="polite"></p></div>`).join("");
+$("quiz").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]"); if (!b) return;
+  const x = QUIZ[+b.dataset.q], right = +b.dataset.o === x.a;
+  b.parentElement.querySelectorAll("button").forEach((o) => o.classList.remove("right", "wrong"));
+  b.classList.add(right ? "right" : "wrong");
+  $("why-" + b.dataset.q).textContent = (right ? "✓ Correct. " : "✕ Not quite. ") + x.why;
+});
+const done = $("done");
+done.checked = isDone(5);
+done.onchange = () => setDone(5, done.checked);
+</script>
+</body>
+</html>
