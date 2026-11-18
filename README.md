@@ -23,7 +23,7 @@ Every step is a web page with:
 | 3 | Brain waves from 1,000 neurons: E/I network, gamma, EEG spectrum | Physiological | ✅ |
 | 4 | Memory recall: Hopfield network, pattern completion, capacity and synapse loss | Physiological | ✅ |
 | 5 | Working memory: ring bump attractor, drift, distractors, slow NMDA synapses | Physiological | ✅ |
-| 6 | Decisions | Physiological | ⏳ |
+| 6 | Decisions: two populations race to a threshold, speed vs accuracy | Physiological | ✅ |
 | 7 | Learning from reward (dopamine) | Physiological | ⏳ |
 | 8 | Vision: learning to read digits | Physiological | ⏳ |
 | 9 | Navigation: place cells and head direction | Physiological | ⏳ |

@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Decisions · Mini Brain</title>
+<meta name="description" content="Step 6: two groups of neurons race to a threshold to make a choice. Why hard choices take longer, and the trade between speed and accuracy.">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M18 56h20l8-30 9 48 7-18h20' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="../assets/style.css?v=4">
+<style>
+  .race-wrap { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  canvas.dots { width: 100%; max-width: 170px; margin: 0 auto; aspect-ratio: 1; display: block; border-radius: 50%; background: var(--fill); }
+  .plots2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 480px) { .plots2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="navbar"><div class="wrap">
+  <a class="back" href="../index.html#roadmap">Roadmap</a>
+  <span class="meta">Step 6 of 12</span>
+</div></header>
+
+<main class="wrap" id="main">
+  <p class="eyebrow">Step 6 · Circuits</p>
+  <h1>Decisions</h1>
+  <p class="lede">Two groups of neurons race. The first to the finish line makes the choice.</p>
+
+  <div class="card">
+    <h3>You'll learn</h3>
+    <ul class="goals">
+      <li>How competing neurons turn noisy evidence into one choice</li>
+      <li>Why hard choices take longer and go wrong more often</li>
+      <li>The trade between speed and accuracy</li>
+      <li>The Python behind a classic decision model</li>
+    </ul>
+  </div>
+
+  <h2>The idea</h2>
+  <div class="card">
+    <p class="idea">A decision is a <b>tug of war</b>. Each team pulls harder the more evidence it gets, and the first to drag the rope past a line wins.</p>
+    <ul>
+      <li><b>Each group excites itself</b>, so a small lead grows: the same reverberation as Step 5.</li>
+      <li><b>Each group inhibits the other</b>, so only one can win.</li>
+      <li><b>A threshold ends the race.</b> Crossing it is the moment of choice.</li>
+    </ul>
+  </div>
+
+  <div class="card">
+    <h3>The task</h3>
+    <p class="sub">Dots jiggle on a screen. Some share a direction, the rest move at random. Which way are they going? <b>Coherence</b> is the share moving together: 51% is easy, 3% is very hard, 0% is pure guessing. Monkeys and people have done this task for over 30 years.</p>
+  </div>
+
+  <h2>Demo 1 · Watch a decision form</h2>
+  <p class="sub">Group A votes “right”, group B votes “left”. Each new trial picks a random true direction.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d1">
+    <div class="demo-head"><h3 id="d1">Two groups racing</h3><span class="speed">Slow motion ×4</span></div>
+    <div class="race-wrap">
+      <canvas class="dots" id="dots" role="img" aria-label="Moving dots. Some share a direction; the rest move randomly."></canvas>
+      <div>
+        <canvas class="plot" id="race" role="img" aria-label="Firing rates of group A and group B over time, with the threshold line"></canvas>
+        <div class="legend"><span><i style="background:var(--accent)"></i>A: right</span><span><i style="background:var(--na)"></i>B: left</span><span><i style="background:var(--label-2)"></i>Threshold</span></div>
+        <p class="foot" style="margin:4px 0 0">Each line is a group's firing rate, averaged over the last 20 ms like an electrode recording. The wobble is noise: it's why hard choices sometimes go wrong.</p>
+      </div>
+    </div>
+    <div class="stats">
+      <span class="stat">Dots moved<b id="s-true">–</b></span>
+      <span class="stat">Brain chose<b id="s-choice">–</b></span>
+      <span class="stat">Decision time<b id="s-rt">–</b></span>
+      <span class="stat">Score<b id="s-score">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="c-coh">Coherence <output for="c-coh"></output></label><input type="range" id="c-coh" min="0" max="5" step="1" value="2"><p class="hint">How many dots move together</p></div>
+      <div class="ctrl"><label for="c-thr">Threshold <output for="c-thr"></output></label><input type="range" id="c-thr" min="6" max="30" step="1" value="15"><p class="hint">How sure the brain must be</p></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="b-new">Show Dots</button>
+      <button id="b-pause">Pause</button>
+      <button id="b-reset">Reset Score</button>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c1">
+    <div class="demo-head"><h3 id="c1">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code1" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Set coherence to 51.2% and press <b>Show Dots</b>.<span class="see">One line shoots up fast. Easy choice, quick decision.</span></span></li>
+      <li><span>Drop to 3.2% and run a few trials.<span class="see">The lines stay tangled for longer, and sometimes the wrong one wins.</span></span></li>
+      <li><span>Set coherence to 0%.<span class="see">There's no evidence, yet the brain still chooses: noise breaks the tie.</span></span></li>
+      <li><span>Watch after the choice, when the dots vanish.<span class="see">The winner keeps firing. The choice is held in mind, like Step 5.</span></span></li>
+      <li><span>Drop the threshold to 6 Hz.<span class="see">Choices come early, before one group has truly won. After the dots vanish, neither keeps firing.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>How real decisions work</h2>
+  <div class="card">
+    <h3>1. Sensors report the evidence</h3>
+    <p>Neurons in visual area <b>MT</b> each prefer one direction. Their firing tracks the dots moment to moment, but it is noisy. One glance is never enough.</p>
+  </div>
+  <div class="card">
+    <h3>2. Deciders add it up</h3>
+    <ul>
+      <li>Neurons in parietal area <b>LIP</b> ramp up as evidence piles in, faster when the dots are clearer.</li>
+      <li>Monkeys made their choice when LIP firing reached <b>about the same level</b> each time (2002). That's the threshold.</li>
+      <li>Strong self-excitation through slow NMDA synapses lets the circuit add evidence up over hundreds of milliseconds.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>3. Speed or accuracy?</h3>
+    <p class="sub">Tell people to hurry and they answer faster but make more mistakes. In models this is a lower threshold. Brain imaging and Parkinson's research point to the <b>basal ganglia</b> as one place that sets it.</p>
+  </div>
+
+  <h2>Demo 2 · Harder means slower</h2>
+  <p class="sub">Run 60 trials at each coherence, then plot how often the brain was right and how long it took.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d2">
+    <div class="demo-head"><h3 id="d2">360 trials</h3><span class="speed">Computed</span></div>
+    <div class="plots2">
+      <div><p class="foot" style="margin:0 0 4px">Accuracy</p><canvas class="plot" id="acc" role="img" aria-label="Percent correct against coherence"></canvas></div>
+      <div><p class="foot" style="margin:0 0 4px">Decision time</p><canvas class="plot" id="rt" role="img" aria-label="Average decision time in milliseconds against coherence"></canvas></div>
+    </div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Your settings</span><span><i style="background:var(--label-2)"></i>Default (15 Hz, J_self 0.261)</span></div>
+    <div class="stats">
+      <span class="stat">Correct at 6.4%<b id="a6">–</b></span>
+      <span class="stat">Time at 6.4%<b id="t6">–</b></span>
+      <span class="stat">Undecided<b id="und">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="d-thr">Threshold <output for="d-thr"></output></label><input type="range" id="d-thr" min="6" max="30" step="1" value="15"><p class="hint">How sure before choosing</p></div>
+      <div class="ctrl"><label for="d-j">Self-excitation <output for="d-j"></output></label><input type="range" id="d-j" min="0.2209" max="0.3009" step="0.01" value="0.2609"><p class="hint">How strongly each group feeds itself</p></div>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c2">
+    <div class="demo-head"><h3 id="c2">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code2" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Look at the defaults.<span class="see">Hard choices (low coherence) are slower and less accurate, just like in monkeys and people.</span></span></li>
+      <li><span>Slide threshold down to 6 Hz.<span class="see">Choices take ~200 ms instead of ~550, and accuracy drops on hard trials. That's the speed–accuracy trade-off.</span></span></li>
+      <li><span>Now slide it up to 30 Hz.<span class="see">Much slower, but barely more accurate. Once one group has won, waiting longer adds nothing.</span></span></li>
+      <li><span>Raise self-excitation to 0.301.<span class="see">Decisions get fast and impulsive: a small early lead snowballs before enough evidence arrives.</span></span></li>
+      <li><span>Lower it to 0.221.<span class="see">Too weak to snowball: many trials never reach a decision.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>The equations</h2>
+  <div class="card">
+    <h3>Equation 1 · Input to each group</h3>
+    <div class="eq" role="math" aria-label="x A equals J self times S A minus J other times S B plus I 0 plus I A plus noise">
+      <span class="ln"><i>x<sub>A</sub></i> = <i>J</i><sub>self</sub> <i>S<sub>A</sub></i> − <i>J</i><sub>other</sub> <i>S<sub>B</sub></i> + <i>I</i><sub>0</sub> + <i>I<sub>A</sub></i> + noise</span>
+      <span class="ln"><i>I<sub>A</sub></i> = <i>J</i><sub>ext</sub> <i>μ</i> (1 + <i>c</i>/100)</span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>S</i></span><span>How many of the group's slow NMDA synapses are open, 0 to 1.</span></div>
+      <div><span class="sym"><i>J</i><sub>self</sub></span><span>Self-excitation: a group that fires keeps itself firing.</span></div>
+      <div><span class="sym"><i>J</i><sub>other</sub></span><span>Competition: each group inhibits the other.</span></div>
+      <div><span class="sym"><i>c</i></span><span>Coherence, the evidence. Group B gets (1 − <i>c</i>/100).</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Equation 2 · Input to firing rate</h3>
+    <div class="eq" role="math" aria-label="r equals a x minus b over 1 minus e to the minus d times a x minus b">
+      <span class="ln"><i>r</i> = (<i>ax</i> − <i>b</i>) / (1 − e<sup>−<i>d</i>(<i>ax</i> − <i>b</i>)</sup>)</span>
+    </div>
+    <p class="sub">Near silent for small input, then rising in a straight line. It's Step 1's f-I curve, fitted for a whole crowd of spiking neurons.</p>
+  </div>
+  <div class="card">
+    <h3>Equation 3 · Slow synapses add up the evidence</h3>
+    <div class="eq" role="math" aria-label="d S by d t equals minus S over tau S plus 1 minus S times gamma times r">
+      <span class="ln">d<i>S</i>/d<i>t</i> = −<i>S</i>/<i>τ<sub>S</sub></i> + (1 − <i>S</i>) <i>γ r</i></span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>τ<sub>S</sub></i> = 100 ms</span><span>NMDA synapses close slowly, so they remember recent firing. That's what lets the circuit add evidence over time.</span></div>
+      <div><span class="sym">(1 − <i>S</i>)</span><span>Synapses can't be more than fully open.</span></div>
+    </div>
+    <p class="sub"><b>The choice:</b> average each rate over ~20 ms. The first group whose average passes the threshold wins.</p>
+    <details>
+      <summary>All the numbers</summary>
+      <p class="sub"><i>J</i><sub>self</sub> 0.2609 nA, <i>J</i><sub>other</sub> 0.0497 nA, <i>I</i><sub>0</sub> 0.3255 nA, <i>J</i><sub>ext</sub> 0.00052 nA/Hz, <i>μ</i> 30 Hz, <i>a</i> 270 Hz/nA, <i>b</i> 108 Hz, <i>d</i> 0.154 s, <i>γ</i> 0.641, <i>τ<sub>S</sub></i> 100 ms, read-out smoothing 20 ms. Noise: a slowly varying current (time constant 2 ms, size 0.02 nA). Step 0.5 ms. From Wong &amp; Wang (2006), who boiled Wang's 2002 network of 2,000 spiking neurons down to these two numbers.</p>
+    </details>
+  </div>
+
+  <h2>Real vs our model</h2>
+  <div class="card vs">
+    <div class="item"><h3>Neurons</h3><div class="pair"><div class="r"><span>Real</span>Millions across MT, LIP, frontal cortex and basal ganglia.</div><div class="m"><span>Our model</span>Two groups, each summed into one number.</div></div></div>
+    <div class="item"><h3>Ramping to a threshold</h3><div class="pair"><div class="r"><span>Real</span>LIP firing climbs to a fixed level before the choice.</div><div class="m"><span>Our model</span>The race ✓</div></div></div>
+    <div class="item"><h3>Harder is slower</h3><div class="pair"><div class="r"><span>Real</span>Monkeys and people slow down and err more on weak evidence.</div><div class="m"><span>Our model</span>Same shape ✓</div></div></div>
+    <div class="item"><h3>Timing</h3><div class="pair"><div class="r"><span>Real</span>About 400–800 ms, including seeing and moving the eyes.</div><div class="m"><span>Our model</span>About 250–650 ms for the deciding part alone.</div></div></div>
+    <div class="item"><h3>Changing your mind</h3><div class="pair"><div class="r"><span>Real</span>Late evidence can reverse a choice.</div><div class="m"><span>Our model</span>Once past the line, the winner stays. No take-backs.</div></div></div>
+  </div>
+
+  <details class="card">
+    <summary>Why two numbers instead of 2,000 neurons?</summary>
+    <p class="sub">Wang's 2002 spiking network made the same choices, but it is slow to run and hard to see inside. Averaging each group and keeping only the slowest variable (NMDA) gives two equations you can plot as a race. It's like Step 5's rate model taken one step further.</p>
+  </details>
+
+  <h2>Beyond the lab</h2>
+  <div class="card">
+    <h3>Emerging tech</h3>
+    <ul>
+      <li><b>Reading a choice as it forms.</b> In 2021, researchers decoded monkeys' developing decisions in real time from hundreds of neurons recorded at once, and caught changes of mind as they happened.</li>
+      <li><b>Winner-take-all chips.</b> Competing groups that inhibit each other are a standard building block on neuromorphic chips, used to pick one answer from many.</li>
+      <li><b>An optimal rule.</b> Adding noisy evidence until a threshold is the fastest way to reach a set accuracy (Wald, 1947). The race above approximates it.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>For good</h3>
+    <ul>
+      <li><b>Parkinson's.</b> Deep brain stimulation helps patients move, but in a 2007 study it made them rush hard choices. Its threshold-setting role in the basal ganglia explains why.</li>
+      <li><b>Mental health research.</b> Fitting race models to people's choices is used to study ADHD, depression and anxiety. It's a research tool, not yet a diagnosis.</li>
+      <li><b>Mental privacy.</b> If choices can be read before they're made, who may read them? Chile (2021) and Colorado (2024) now protect brain data by law.</li>
+    </ul>
+  </div>
+
+  <h2>Key terms</h2>
+  <div class="card">
+    <dl class="terms">
+      <div><dt>Coherence</dt><dd>Share of dots moving the same way: the strength of the evidence.</dd></div>
+      <div><dt>Evidence accumulation</dt><dd>Adding up noisy information over time before choosing.</dd></div>
+      <div><dt>Threshold</dt><dd>The level of firing that triggers the choice.</dd></div>
+      <div><dt>Winner-take-all</dt><dd>Competing groups inhibit each other until only one stays active.</dd></div>
+      <div><dt>Speed–accuracy trade-off</dt><dd>Deciding faster means more mistakes, and vice versa.</dd></div>
+      <div><dt>LIP</dt><dd>Lateral intraparietal area: neurons that ramp up as a choice forms.</dd></div>
+      <div><dt>Psychometric curve</dt><dd>Accuracy plotted against how strong the evidence is.</dd></div>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3>Run it yourself</h3>
+    <p class="sub">The same race in NumPy: <a href="https://github.com/cweekiat/mini-brain/blob/main/python/step06_decisions.py">step06_decisions.py</a></p>
+  </div>
+
+  <h2>Check yourself</h2>
+  <div class="card" id="quiz"></div>
+
+  <div class="card">
+    <label class="toggle" style="font-size:1.0625rem"><input type="checkbox" id="done"> Mark Step 6 as done</label>
+  </div>
+
+  <nav class="pager" aria-label="Steps">
+    <a href="05-working-memory.html"><small>Previous</small>Working memory</a>
+    <span class="next"><small>Next · Coming soon</small>Learning from reward</span>
+  </nav>
+</main>
+
+<footer><div class="wrap foot">Britten et al. (1992), J. Neurosci. 12:4745. Roitman &amp; Shadlen (2002), J. Neurosci. 22:9475. Wang (2002), Neuron 36:955. Wong &amp; Wang (2006), J. Neurosci. 26:1314. Frank et al. (2007), Science 318:1309. Peixoto et al. (2021), Nature 591:604. Wald (1947), Sequential Analysis.</div></footer>
+
+<script type="module">
+import { Decision, trial, COHERENCES } from "../assets/sim/decision.js";
+import { xyPlot, slider, fitCanvas, css } from "../assets/plot.js";
+import { C, K, IN, OUT, num, paint } from "../assets/livecode.js";
+import { isDone, setDone } from "../assets/steps.js";
+
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DT = 0.5, WAIT = 300, HOLD = 800, MAXMS = 2000; // ms
+const NAMES = ["A (right)", "B (left)"];
+
+// ── Demo 1 ───────────────────────────────────────────────────────────
+// phase: "wait" (300 ms, no dots) → "dots" (until a group crosses threshold) → "hold" (dots off) → "done"
+const d1 = { m: null, phase: "done", paused: reduceMotion, coh: 6.4, thr: 15, dir: 0, choice: -1, rt: null, hist: [], score: [0, 0], dots: [] };
+const pauseBtn = $("b-pause");
+const label = () => (pauseBtn.textContent = d1.paused ? "Play" : "Pause"); label();
+pauseBtn.onclick = () => { d1.paused = !d1.paused; label(); };
+slider("c-coh", (i) => COHERENCES[i] + "%", (i) => (d1.coh = COHERENCES[i]));
+slider("c-thr", (v) => v + " Hz", (v) => (d1.thr = v));
+$("b-reset").onclick = () => { d1.score = [0, 0]; stats1(); };
+let seed = 1;
+function newTrial() {
+  d1.m = new Decision(seed++);
+  d1.dir = Math.random() < 0.5 ? 0 : 1; // 0 = right (A is correct), 1 = left
+  d1.phase = "wait"; d1.choice = -1; d1.rt = null; d1.hist = [];
+  d1.dots = Array.from({ length: 90 }, () => [Math.random(), Math.random()]);
+  if (d1.paused) { d1.paused = false; label(); }
+}
+$("b-new").onclick = newTrial;
+const signedC = () => (d1.dir === 0 ? d1.coh : -d1.coh); // % toward A
+
+function frame1() {
+  const m = d1.m; if (!m || d1.phase === "done") return;
+  for (let s = 0; s < 8; s++) { // 8 × 0.5 ms = 4 ms of brain time per frame (≈ ×4 slow motion)
+    const t = m.t - WAIT; // time since dots appeared
+    if (d1.phase === "wait" && t >= 0) { d1.phase = "dots"; m.stimulus(signedC()); }
+    m.step(DT);
+    const tn = m.t - WAIT;
+    if (d1.phase === "dots" && (Math.max(...m.rs) > d1.thr || tn >= MAXMS)) {
+      d1.rt = tn;
+      if (Math.max(...m.rs) > d1.thr) {
+        d1.choice = m.rs[0] > m.rs[1] ? 0 : 1;
+        if (d1.coh > 0) d1.score[d1.choice === d1.dir ? 0 : 1]++;
+      }
+      d1.phase = "hold"; m.stimOff();
+    } else if (d1.phase === "hold" && tn >= d1.rt + HOLD) { d1.phase = "done"; }
+    if (Math.round(m.t / DT) % 4 === 0) d1.hist.push([tn, m.rs[0], m.rs[1]]);
+    if (d1.phase === "done") break;
+  }
+}
+function moveDots() { // coherence % of dots step in the true direction; the rest jump randomly
+  if (d1.phase !== "dots" || d1.paused) return;
+  const v = d1.dir === 0 ? 0.012 : -0.012;
+  for (const p of d1.dots) {
+    if (Math.random() < d1.coh / 100) { p[0] = (p[0] + v + 1) % 1; }
+    else { p[0] = Math.random(); p[1] = Math.random(); }
+  }
+}
+function draw1() {
+  const cv = $("dots"), size = cv.clientWidth || 200, { ctx } = fitCanvas(cv, size);
+  ctx.clearRect(0, 0, size, size);
+  const c = size / 2;
+  if (d1.phase === "dots") {
+    ctx.fillStyle = css("--label");
+    for (const [x, y] of d1.dots) { if ((x - 0.5) ** 2 + (y - 0.5) ** 2 < 0.22) { ctx.beginPath(); ctx.arc(x * size, y * size, 2.4, 0, 7); ctx.fill(); } }
+  }
+  if (d1.choice >= 0 && (d1.phase === "hold" || d1.phase === "done")) { // the choice: an arrow
+    const s = d1.choice === 0 ? 1 : -1;
+    ctx.strokeStyle = css(d1.choice === 0 ? "--accent" : "--na"); ctx.lineWidth = 5; ctx.lineCap = "round";
+    ctx.beginPath(); ctx.moveTo(c - s * size * 0.25, c); ctx.lineTo(c + s * size * 0.25, c);
+    ctx.moveTo(c + s * size * 0.12, c - size * 0.12); ctx.lineTo(c + s * size * 0.25, c); ctx.lineTo(c + s * size * 0.12, c + size * 0.12); ctx.stroke();
+  } else { ctx.fillStyle = css("--label-2"); ctx.fillRect(c - 4, c - 1, 8, 2); ctx.fillRect(c - 1, c - 4, 2, 8); } // fixation cross
+  const h = d1.hist, xMax = Math.max(1200, ...h.map((p) => p[0] + 100));
+  const yMax = Math.max(40, Math.ceil(Math.max(0, ...h.map((p) => Math.max(p[1], p[2]))) / 10) * 10);
+  xyPlot($("race"), { height: 190, xMin: -WAIT, xMax, yMax, xLabel: "ms after dots", yLabel: "Hz",
+    series: [
+      { points: [[-WAIT, d1.thr], [xMax, d1.thr]], color: "--label-2", dash: [5, 4] },
+      { points: h.map((p) => [p[0], p[1]]), color: "--accent" },
+      { points: h.map((p) => [p[0], p[2]]), color: "--na" },
+    ],
+    marker: d1.choice >= 0 ? { x: d1.rt, y: d1.thr, color: d1.choice === 0 ? "--accent" : "--na" } : null });
+  stats1();
+}
+function stats1() {
+  $("s-true").textContent = d1.m ? (d1.coh === 0 ? "Nowhere (0%)" : d1.dir === 0 ? "Right" : "Left") : "–";
+  $("s-choice").textContent = d1.choice < 0 ? (d1.phase === "dots" || d1.phase === "wait" ? "Deciding…" : d1.m ? "No choice" : "–")
+    : (d1.choice === 0 ? "Right" : "Left") + (d1.coh === 0 ? " · coin flip" : d1.choice === d1.dir ? " ✓" : " ✕");
+  $("s-rt").textContent = d1.choice >= 0 ? Math.round(d1.rt) + " ms" : "–";
+  const n = d1.score[0] + d1.score[1];
+  $("s-score").textContent = n ? `${d1.score[0]} of ${n}` : "–";
+}
+function code1() {
+  const m = d1.m || new Decision(0), dotsOn = d1.phase === "dots", c = signedC();
+  const crossed = d1.choice >= 0 && (d1.phase === "hold" || d1.phase === "done");
+  paint("code1", [
+    C("# fixed: J_other = 0.0497 nA"),
+    C("# I0 = 0.3255 nA, mu = 30 Hz"),
+    C("# Jext = 0.00052 nA/Hz"),
+    C("# tau_S 100, tau_N 2, dt 0.5 (ms)"),
+    C("# gamma = 0.641, sigma = 0.02 nA"),
+    C("# tau_R = 20 ms (read-out smoothing)"),
+    `J_self = ${num(m.Jself, 4)}  ${C("# nA")}`,
+    `c = ${IN(num(c, 1))}  ${C("# % toward A (right)")}`,
+    `threshold = ${IN(d1.thr)}  ${C("# Hz")}`,
+    `dots = ${IN(dotsOn ? "True" : "False")}`,
+    "",
+    C("# every 0.5 ms:"),
+    [`${K("if")} dots:`, dotsOn ? "hit" : ""],
+    "    I_A = Jext * mu * (1 + c / 100)",
+    "    I_B = Jext * mu * (1 - c / 100)",
+    [`${K("else")}:`, dotsOn ? "" : "hit"],
+    "    I_A = I_B = 0",
+    `${C("# → I_A")} ${OUT(num(m.ext[0], 4))} ${C("I_B")} ${OUT(num(m.ext[1], 4))}`,
+    "x_A = (J_self * S_A - J_other * S_B",
+    "       + I0 + I_A + noise_A)",
+    "x_B = (J_self * S_B - J_other * S_A",
+    "       + I0 + I_B + noise_B)",
+    "r = {\"A\": rate(x_A), \"B\": rate(x_B)}",
+    C("# (S_A is S[\"A\"], and so on)"),
+    C("# rate(x): y = 270x − 108;"),
+    C("#   y / (1 − exp(−0.154·y))  Hz"),
+    `${K("for")} p ${K("in")} "AB":`,
+    "    open_ = (1-S[p]) * gamma * r[p]",
+    "    S[p] += dt * (-S[p] / tau_S",
+    "                  + open_ / 1000)",
+    "    kick = sqrt(dt / tau_N) * sigma",
+    "    noise[p] -= dt/tau_N * noise[p]",
+    "    noise[p] += kick * randn()",
+    C("    # smoothed rate: average ~20 ms"),
+    "    rs[p] += dt/tau_R*(r[p] - rs[p])",
+    `${C("# → r_A")} ${OUT(num(m.r[0], 1))} ${C("r_B")} ${OUT(num(m.r[1], 1))} ${C("Hz")}`,
+    `${C("# → rs_A")} ${OUT(num(m.rs[0], 1))} ${C("rs_B")} ${OUT(num(m.rs[1], 1))} ${C("Hz")}`,
+    `${C("# → S_A")} ${OUT(num(m.S[0], 3))} ${C("S_B")} ${OUT(num(m.S[1], 3))}`,
+    "",
+    "rs_max = max(rs['A'], rs['B'])",
+    [`${K("if")} dots ${K("and")} rs_max &gt; threshold:${crossed && d1.phase === "hold" && m.t - WAIT - d1.rt < 300 ? "  ← decided!" : ""}`, crossed && m.t - WAIT - d1.rt < 300 ? "hit" : ""],
+    `    choice = "AB"[rs["B"] &gt;= rs["A"]]`,
+    `    dots = ${K("False")}  ${C("# trial ends")}`,
+    C("# (also ends at 2000 ms: no choice)"),
+    `${C("# → choice")} ${OUT(crossed ? NAMES[d1.choice] : "none yet")}${crossed ? " " + C("at") + " " + OUT(Math.round(d1.rt) + " ms") : ""}`,
+  ]);
+}
+
+// ── Demo 2 ───────────────────────────────────────────────────────────
+const NTR = 60;
+const d2 = { thr: 15, J: 0.2609, curves: {}, cur: null, job: 0 };
+function curves(thr, J, done) {
+  const key = thr + "/" + J.toFixed(4); if (d2.curves[key]) return done(d2.curves[key]);
+  const job = ++d2.job, acc = [], rt = []; let und = 0, j = 0;
+  (function next() {
+    if (job !== d2.job && key !== "15/0.2609") return; // a newer slider value took over
+    const c = COHERENCES[j]; let right = 0, times = [];
+    for (let k = 0; k < NTR; k++) {
+      const r = trial(c, { threshold: thr, Jself: J, seed: 1000 * j + k + 1, dt: DT });
+      if (r.choice === 0) right++;
+      if (r.choice >= 0) times.push(r.rt); else und++;
+    }
+    acc.push(right / NTR); rt.push(times.length ? times.reduce((a, b) => a + b, 0) / times.length : null);
+    if (++j < COHERENCES.length) return setTimeout(next, 0);
+    d2.curves[key] = { acc, rt, und }; done(d2.curves[key]);
+  })();
+}
+function draw2() {
+  const ref = d2.curves["15/0.2609"], cur = d2.cur, S = [];
+  const pts = (arr) => COHERENCES.map((c, j) => [c, arr[j]]).filter((p) => p[1] !== null);
+  const both = (f) => [ref && { points: pts(f(ref)), color: "--label-2" }, cur && { points: pts(f(cur)), color: "--accent" }].filter(Boolean);
+  xyPlot($("acc"), { height: 170, xMax: 55, yMin: 40, yMax: 100, xLabel: "coherence %", yLabel: "% correct", series: both((x) => x.acc.map((v) => v * 100)) });
+  const rts = both((x) => x.rt), top = Math.max(500, ...rts.flatMap((s) => s.points.map((p) => p[1])));
+  xyPlot($("rt"), { height: 170, xMax: 55, yMax: Math.ceil(top / 250) * 250, xLabel: "coherence %", yLabel: "ms", series: rts });
+  if (cur) {
+    $("a6").textContent = Math.round(cur.acc[2] * 100) + "%";
+    $("t6").textContent = cur.rt[2] === null ? "–" : Math.round(cur.rt[2]) + " ms";
+    $("und").textContent = cur.und + " of " + NTR * COHERENCES.length;
+  }
+  code2();
+}
+function update2() { $("a6").textContent = $("t6").textContent = $("und").textContent = "…"; d2.cur = null; code2(); curves(d2.thr, d2.J, (c) => { d2.cur = c; draw2(); }); }
+let t2 = null;
+slider("d-thr", (v) => v + " Hz", (v) => { d2.thr = v; clearTimeout(t2); t2 = setTimeout(update2, 150); });
+slider("d-j", (v) => v.toFixed(3) + " nA", (v) => { d2.J = +v.toFixed(4); clearTimeout(t2); t2 = setTimeout(update2, 150); });
+function code2() {
+  const c = d2.cur;
+  paint("code2", [
+    C("# inputs: the sliders"),
+    `threshold = ${IN(d2.thr)}  ${C("# Hz")}`,
+    `J_self = ${IN(d2.J.toFixed(4))}  ${C("# nA")}`,
+    "cohs = [0, 3.2, 6.4, 12.8,",
+    "        25.6, 51.2]",
+    C("# trial(): Demo 1's loop. 300 ms"),
+    C("# wait, then dots until a group"),
+    C("# beats threshold (max 2000 ms)."),
+    C("# Dots always favour A here."),
+    "",
+    `${K("for")} j, c ${K("in")} enumerate(cohs):`,
+    "    right, times = 0, []",
+    `    ${K("for")} k ${K("in")} range(60):`,
+    "        choice, t = trial(",
+    "            c, threshold, J_self,",
+    "            seed=1000 * j + k + 1)",
+    "        right += choice == 0",
+    `        ${K("if")} choice &gt;= 0:`,
+    "            times.append(t)",
+    `        ${K("else")}:`,
+    "            undecided += 1",
+    "    acc[c] = right / 60",
+    "    rt[c] = np.mean(times)",
+    "",
+    `${C("# → acc[6.4]")} ${OUT(c ? Math.round(c.acc[2] * 100) + "%" : "…")}`,
+    `${C("# → rt[6.4]")} ${OUT(c && c.rt[2] !== null ? Math.round(c.rt[2]) + " ms" : "…")}`,
+    `${C("# → undecided")} ${OUT(c ? c.und + "/360" : "…")}`,
+  ]);
+}
+
+// ── Start ────────────────────────────────────────────────────────────
+if (!reduceMotion) newTrial();
+let tick = 0;
+(function loop() {
+  if (!d1.paused) frame1();
+  if (tick++ % 2 === 0) moveDots(); // dots refresh at ~30 Hz
+  draw1(); code1();
+  requestAnimationFrame(loop);
+})();
+curves(15, 0.2609, () => update2());
+addEventListener("resize", draw2);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw2);
+
+// ── Quiz ─────────────────────────────────────────────────────────────
+const QUIZ = [
+  { q: "Why do hard choices take longer?", o: ["The neurons are tired", "Weak evidence pushes the race slowly, so it takes longer to reach the threshold", "The threshold is higher for hard choices"], a: 1,
+    why: "With little evidence, both groups climb at almost the same speed, and the winner only pulls ahead slowly." },
+  { q: "Lowering the threshold makes decisions…", o: ["Faster and more accurate", "Slower but more accurate", "Faster but less accurate"], a: 2,
+    why: "The brain commits before enough evidence has been added up, so noise decides more often. That's the speed–accuracy trade-off." },
+  { q: "At 0% coherence, the model still chooses. Why?", o: ["It remembers the last trial", "Noise gives one group a small lead, and self-excitation makes it snowball", "It always picks A"], a: 1,
+    why: "Winner-take-all turns any small difference, even pure noise, into a full decision." },
+];
+$("quiz").innerHTML = QUIZ.map((x, i) => `
+  <div class="q" role="group" aria-labelledby="q${i}"><h3 id="q${i}">${i + 1}. ${x.q}</h3>
+  <div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div>
+  <p class="why" id="why-${i}" aria-live="polite"></p></div>`).join("");
+$("quiz").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]"); if (!b) return;
+  const x = QUIZ[+b.dataset.q], right = +b.dataset.o === x.a;
+  b.parentElement.querySelectorAll("button").forEach((o) => o.classList.remove("right", "wrong"));
+  b.classList.add(right ? "right" : "wrong");
+  $("why-" + b.dataset.q).textContent = (right ? "✓ Correct. " : "✕ Not quite. ") + x.why;
+});
+const done = $("done");
+done.checked = isDone(6);
+done.onchange = () => setDone(6, done.checked);
+</script>
+</body>
+</html>
