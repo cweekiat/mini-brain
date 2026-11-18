@@ -9,7 +9,7 @@ export const STEPS = [
   { n: 3, slug: "03-brain-waves", title: "Brain waves", sub: "Rhythms with no conductor", level: "Circuits", ready: true, neurons: 1000, synapses: 99900 },
   { n: 4, slug: "04-memory", title: "Memory recall", sub: "Half a cue, the whole memory", level: "Circuits", ready: true, neurons: 400, synapses: 159600 },
   { n: 5, slug: "05-working-memory", title: "Working memory", sub: "Holding a thought", level: "Circuits", ready: true, neurons: 100, synapses: 10000 },
-  { n: 6, slug: "06-decisions", title: "Decisions", sub: "Neurons that compete", level: "Circuits", ready: false, neurons: 2000 },
+  { n: 6, slug: "06-decisions", title: "Decisions", sub: "Neurons that compete", level: "Circuits", ready: true, neurons: 2, synapses: 4 },
   { n: 7, slug: "07-reward", title: "Learning from reward", sub: "Dopamine as a teacher", level: "Circuits", ready: false, neurons: 2000 },
   { n: 8, slug: "08-vision", title: "Vision", sub: "Learning to read digits", level: "Circuits", ready: false, neurons: 6400 },
   { n: 9, slug: "09-navigation", title: "Navigation", sub: "Place cells and a compass", level: "Circuits", ready: false, neurons: 1000 },
