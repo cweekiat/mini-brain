@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Brain waves · Mini Brain</title>
+<meta name="description" content="Step 3: 1,000 neurons find a rhythm with no conductor. Excitation, inhibition, and where EEG brain waves come from.">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M18 56h20l8-30 9 48 7-18h20' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 0.75rem; }
+  .presets button { font-weight: 600; }
+  .presets button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .bands { display: grid; gap: 0; }
+  .bands > div { display: grid; grid-template-columns: 4.5rem 5.5rem 1fr; gap: 10px; padding: 0.5rem 0; border-top: 0.5px solid var(--sep); font-size: 0.9375rem; }
+  .bands > div:first-child { border-top: 0; }
+  .bands b { text-transform: capitalize; }
+  .bands span { color: var(--label-2); }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="navbar"><div class="wrap">
+  <a class="back" href="../index.html#roadmap">Roadmap</a>
+  <span class="meta">Step 3 of 12</span>
+</div></header>
+
+<main class="wrap" id="main">
+  <p class="eyebrow">Step 3 · Circuits</p>
+  <h1>Brain waves</h1>
+  <p class="lede">1,000 neurons find a rhythm with no conductor.</p>
+
+  <div class="card">
+    <h3>You'll learn</h3>
+    <ul class="goals">
+      <li>Why excitation needs inhibition</li>
+      <li>How a rhythm emerges from a push–pull loop</li>
+      <li>What sets a brain wave's speed, and what EEG measures</li>
+      <li>The Python for a 1,000-neuron network</li>
+    </ul>
+  </div>
+
+  <h2>The idea</h2>
+  <div class="card">
+    <p class="idea">A brain wave is like a crowd falling into <b>clapping in sync</b>. Nobody leads. Each person just reacts to the people near them.</p>
+    <ul>
+      <li><b>80% of neurons are accelerators</b> (excitatory). They make others fire.</li>
+      <li><b>20% are brakes</b> (inhibitory). They silence others.</li>
+      <li><b>Push, brake, release, repeat</b>: the loop between them is the rhythm.</li>
+    </ul>
+  </div>
+
+  <h2>Demo 1 · 1,000 neurons</h2>
+<div class="duo">
+  <section class="card" aria-labelledby="d1">
+    <div class="demo-head"><h3 id="d1">An excitatory–inhibitory network</h3><span class="speed">Slowed ~4×</span></div>
+    <canvas class="plot" id="raster" role="img" aria-label="Raster plot: each dot is one spike, one row per neuron, time left to right"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Excitatory spikes (200 of 800 shown)</span><span><i style="background:var(--k)"></i>Inhibitory spikes (50 of 200)</span></div>
+    <canvas class="plot" id="eeg1" role="img" aria-label="Live EEG-like signal of the network" style="margin-top:8px"></canvas>
+    <div class="legend"><span><i style="background:var(--model)"></i>EEG-like signal (summed synaptic currents)</span></div>
+    <div class="stats">
+      <span class="stat">E rate<b id="rE">–</b></span>
+      <span class="stat">I rate<b id="rI">–</b></span>
+      <span class="stat">Synchrony<b id="sync">–</b></span>
+    </div>
+    <div class="presets" role="group" aria-label="Presets">
+      <button data-p="rhythm" aria-pressed="true">Rhythm</button>
+      <button data-p="calm" aria-pressed="false">Calm</button>
+      <button data-p="seizure" aria-pressed="false">Seizure</button>
+      <button data-p="silent" aria-pressed="false">Silent</button>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="n-drive">Drive to E cells <output for="n-drive"></output></label><input type="range" id="n-drive" min="0" max="4" step="0.1" value="3"><p class="hint">Input from the rest of the brain</p></div>
+      <div class="ctrl"><label for="n-drivei">Drive to I cells <output for="n-drivei"></output></label><input type="range" id="n-drivei" min="0" max="3" step="0.1" value="0.5"><p class="hint">Low = brakes follow the accelerators</p></div>
+      <div class="ctrl"><label for="n-we">Excitation <output for="n-we"></output></label><input type="range" id="n-we" min="0" max="1.5" step="0.05" value="0.6"><p class="hint">Kick from one excitatory spike</p></div>
+      <div class="ctrl"><label for="n-g">Inhibition <output for="n-g"></output></label><input type="range" id="n-g" min="0" max="8" step="0.1" value="5"><p class="hint">Brake strength, × excitation</p></div>
+      <div class="ctrl"><label for="n-noise">Noise <output for="n-noise"></output></label><input type="range" id="n-noise" min="0" max="4" step="0.1" value="0.5"><p class="hint">Random jostling</p></div>
+    </div>
+    <div class="btns"><button id="n-pause">Pause</button></div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c1">
+    <div class="demo-head"><h3 id="c1">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code1" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Start on <b>Rhythm</b>.<span class="see">Vertical stripes: neurons firing together, about 33 times a second. The EEG waves.</span></span></li>
+      <li><span>Press <b>Seizure</b> (no brakes).<span class="see">Every neuron fires nonstop. This is roughly what happens when inhibition fails in epilepsy.</span></span></li>
+      <li><span>Press <b>Calm</b>.<span class="see">Neurons still fire, but at random times. The EEG goes flat: random currents cancel out.</span></span></li>
+      <li><span>Back to <b>Rhythm</b>, then raise only <b>Drive to I cells</b> to 2.<span class="see">The rhythm vanishes. It only exists while the brakes follow the accelerators.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>Where brain waves come from</h2>
+  <div class="card">
+    <h3>1. What an EEG picks up</h3>
+    <p>An EEG electrode on the scalp can't hear single spikes. It picks up the <b>synaptic currents</b> of millions of neurons at once.</p>
+    <ul>
+      <li><b>In sync</b>: currents add up into a wave you can measure.</li>
+      <li><b>Out of sync</b>: they cancel out, and the EEG looks flat.</li>
+    </ul>
+    <p class="sub">So a brain wave is a sign of <i>timing</i>, not of how busy the brain is. That's why Calm looked flat even though neurons kept firing.</p>
+  </div>
+  <div class="card">
+    <h3>2. The gamma loop, in four beats</h3>
+    <ol class="tasks">
+      <li><span><b>Accelerators fire</b> together.<span class="see">Excitatory (pyramidal) cells send a volley.</span></span></li>
+      <li><span><b>Brakes fire</b> a moment later.<span class="see">Fast-spiking interneurons are kicked by that volley.</span></span></li>
+      <li><span><b>Everyone is silenced</b> by GABA.<span class="see">For about as long as inhibition lasts (τ<sub>I</sub>).</span></span></li>
+      <li><span><b>The brake wears off</b> and the loop restarts.<span class="see">One cycle ≈ 30 ms, so about 33 cycles per second: gamma.</span></span></li>
+    </ol>
+  </div>
+  <div class="card">
+    <h3>3. The bands</h3>
+    <div class="bands">
+      <div><b>Delta</b><span>0.5–4 Hz</span><span>Deep sleep</span></div>
+      <div><b>Theta</b><span>4–8 Hz</span><span>Memory, navigation</span></div>
+      <div><b>Alpha</b><span>8–13 Hz</span><span>Relaxed, eyes closed</span></div>
+      <div><b>Beta</b><span>13–30 Hz</span><span>Active thinking, movement</span></div>
+      <div><b>Gamma</b><span>30–100 Hz</span><span>Focused attention</span></div>
+    </div>
+    <p class="sub" style="margin-top:0.5rem">Each band comes from different loops and cell types. Our network makes the beta–gamma kind.</p>
+  </div>
+
+  <h2>Demo 2 · What sets the speed</h2>
+  <p class="sub">The same network. Now change how long each brake lasts, and read the rhythm's speed off its spectrum.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d2">
+    <div class="demo-head"><h3 id="d2">Rhythm speed vs inhibition time</h3><span class="speed">Slowed ~4×</span></div>
+    <canvas class="plot" id="eeg2" role="img" aria-label="Live EEG-like signal"></canvas>
+    <div class="legend"><span><i style="background:var(--model)"></i>EEG-like signal</span></div>
+    <p class="foot" style="margin:0.75rem 0 4px">Spectrum: how much of each frequency (last 1 s)</p>
+    <canvas class="plot" id="spec" role="img" aria-label="Power spectrum of the EEG-like signal"></canvas>
+    <div class="stats">
+      <span class="stat">Peak<b id="pk">–</b></span>
+      <span class="stat">Band<b id="band">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="n2-taui">Inhibition lasts (τ<sub>I</sub>) <output for="n2-taui"></output></label><input type="range" id="n2-taui" min="5" max="25" step="1" value="8"><p class="hint">How long GABA keeps neurons quiet</p></div>
+    </div>
+    <div class="btns"><button id="n2-pause">Pause</button></div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c2">
+    <div class="demo-head"><h3 id="c2">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code2" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>τ<sub>I</sub> = 8 ms. Wait about 5 s for the spectrum to fill.<span class="see">One sharp peak, near 33 Hz: gamma.</span></span></li>
+      <li><span>Slide τ<sub>I</sub> to 16 ms.<span class="see">The peak moves down to ~19 Hz: beta. Longer brakes, slower rhythm.</span></span></li>
+      <li><span>Try 25 ms.<span class="see">About 14 Hz. Drugs that lengthen GABA's effect also shift real brain rhythms.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>The equations</h2>
+  <div class="card">
+    <h3>Equation 1 · Every neuron</h3>
+    <p>The leaky bucket from Step 1, now fed by the network.</p>
+    <div class="eq" role="math" aria-label="tau m d V j by d t equals minus V j minus E L, plus R times I ext plus noise plus I E j minus I I j">
+      <span class="ln"><i>τ<sub>m</sub></i> · d<i>V<sub>j</sub></i>/d<i>t</i> = −(<i>V<sub>j</sub></i> − <i>E</i><sub>L</sub>)</span>
+      <span class="ln">+ <i>R</i> (<i>I</i><sub>ext</sub> + <i>η<sub>j</sub></i> <span class="k">+ <i>I</i><sub>E,<i>j</i></sub></span> <span class="na">− <i>I</i><sub>I,<i>j</i></sub></span>)</span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>I</i><sub>ext</sub></span><span>Drive from the rest of the brain (different for E and I cells).</span></div>
+      <div><span class="sym"><i>η<sub>j</sub></i></span><span>Noise: random jostling, a fresh value every step.</span></div>
+      <div><span class="sym"><i>I</i><sub>E,<i>j</i></sub></span><span>Excitatory synaptic current into neuron <i>j</i>.</span></div>
+      <div><span class="sym"><i>I</i><sub>I,<i>j</i></sub></span><span>Inhibitory synaptic current. It is subtracted.</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Equation 2 · Every synapse</h3>
+    <p>Step 2's synapse, summed over all inputs.</p>
+    <div class="eq" role="math" aria-label="tau E d I E by d t equals minus I E, plus w E for each excitatory input spike. tau I d I I by d t equals minus I I, plus g w E for each inhibitory input spike.">
+      <span class="ln k"><i>τ<sub>E</sub></i> d<i>I</i><sub>E</sub>/d<i>t</i> = −<i>I</i><sub>E</sub>,  +<i>w</i><sub>E</sub> per E spike</span>
+      <span class="ln na"><i>τ<sub>I</sub></i> d<i>I</i><sub>I</sub>/d<i>t</i> = −<i>I</i><sub>I</sub>,  +<i>g</i>·<i>w</i><sub>E</sub> per I spike</span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>τ<sub>E</sub></i> = 3 ms</span><span>How long excitation (AMPA) lasts.</span></div>
+      <div><span class="sym"><i>τ<sub>I</sub></i> = 8 ms</span><span>How long inhibition (GABA<sub>A</sub>) lasts. Sets the rhythm's speed.</span></div>
+      <div><span class="sym"><i>g</i></span><span>How much stronger a brake is than an accelerator.</span></div>
+      <div><span class="sym">10%</span><span>Chance that any two neurons are connected (about 100 inputs each).</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Equation 3 · The EEG-like signal</h3>
+    <div class="eq" role="math" aria-label="EEG of t equals the average over excitatory cells of I E plus I I">
+      <span class="ln">EEG(<i>t</i>) = mean over E cells of (<i>I</i><sub>E</sub> + <i>I</i><sub>I</sub>)</span>
+    </div>
+    <p class="sub">Real EEG mostly reflects synaptic currents in excitatory (pyramidal) cells, so we add up their input currents, ignoring sign. This is a common simple stand-in.</p>
+  </div>
+
+  <h2>Real vs our model</h2>
+  <div class="card vs">
+    <div class="item"><h3>Size</h3><div class="pair"><div class="r"><span>Real</span>One cortical column: ~10,000–100,000 neurons.</div><div class="m"><span>Our model</span>1,000.</div></div></div>
+    <div class="item"><h3>E : I ratio</h3><div class="pair"><div class="r"><span>Real</span>About 80 : 20 in cortex.</div><div class="m"><span>Our model</span>800 : 200 ✓</div></div></div>
+    <div class="item"><h3>Wiring</h3><div class="pair"><div class="r"><span>Real</span>~10% nearby, ~7,000 synapses each, highly structured.</div><div class="m"><span>Our model</span>10% at random, ~100 each.</div></div></div>
+    <div class="item"><h3>Gamma</h3><div class="pair"><div class="r"><span>Real</span>30–80 Hz, from E–I loops with fast-spiking interneurons.</div><div class="m"><span>Our model</span>~33 Hz from the same kind of loop ✓</div></div></div>
+    <div class="item"><h3>EEG</h3><div class="pair"><div class="r"><span>Real</span>Millions of aligned cells, filtered by skull and scalp.</div><div class="m"><span>Our model</span>A simple sum of currents in 800 cells.</div></div></div>
+  </div>
+
+  <h2>Key terms</h2>
+  <div class="card">
+    <dl class="terms">
+      <div><dt>Brain wave (oscillation)</dt><dd>Rhythmic rise and fall in many neurons' activity.</dd></div>
+      <div><dt>EEG</dt><dd>Electrodes on the scalp recording summed brain currents.</dd></div>
+      <div><dt>Excitatory / inhibitory neuron</dt><dd>Makes its targets more / less likely to fire.</dd></div>
+      <div><dt>Interneuron</dt><dd>A local, usually inhibitory neuron. Fast-spiking ones drive gamma.</dd></div>
+      <div><dt>E/I balance</dt><dd>Excitation held in check by inhibition. Losing it can cause seizures.</dd></div>
+      <div><dt>Synchrony</dt><dd>Neurons firing at the same moments.</dd></div>
+      <div><dt>Raster plot</dt><dd>One row per neuron, one dot per spike.</dd></div>
+      <div><dt>Power spectrum</dt><dd>How much of each frequency a signal contains.</dd></div>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3>Run it yourself</h3>
+    <p class="sub">The same network in NumPy: <a href="https://github.com/cweekiat/mini-brain/blob/main/python/step03_brain_waves.py">step03_brain_waves.py</a></p>
+  </div>
+
+  <h2>Check yourself</h2>
+  <div class="card" id="quiz"></div>
+
+  <div class="card">
+    <label class="toggle" style="font-size:1.0625rem"><input type="checkbox" id="done"> Mark Step 3 as done</label>
+  </div>
+
+  <nav class="pager" aria-label="Steps">
+    <a href="02-synapse.html"><small>Previous</small>Two neurons that learn</a>
+    <span class="next"><small>Next · Coming soon</small>Memory recall</span>
+  </nav>
+</main>
+
+<footer><div class="wrap foot">Network after Brunel (2000), J. Comput. Neurosci. 8:183; gamma mechanism reviewed in Buzsáki &amp; Wang (2012), Annu. Rev. Neurosci. 35:203.</div></footer>
+
+<script type="module">
+import { Network, spectrum, bandOf } from "../assets/sim/network.js";
+import { Scope, xyPlot, slider, fitCanvas, css } from "../assets/plot.js";
+import { C, K, IN, OUT, num, paint } from "../assets/livecode.js";
+import { isDone, setDone } from "../assets/steps.js";
+
+const $ = (id) => document.getElementById(id);
+const DT = 0.1;
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function playToggle(id) {
+  const btn = $(id), st = { paused: reduceMotion };
+  const label = () => (btn.textContent = st.paused ? "Play" : "Pause");
+  btn.onclick = () => { st.paused = !st.paused; label(); };
+  label();
+  return st;
+}
+// Only run a demo while it is on screen
+function watch(el, st) { new IntersectionObserver(([e]) => (st.visible = e.isIntersecting)).observe(el); st.visible = true; }
+
+// Population statistics over the last 500 ms: rates and synchrony.
+// Synchrony = variance / mean of the E-spike count per 1 ms bin. Independent neurons give ≈ 1.
+function stats(bins, nE, nI) {
+  const e = bins.map((b) => b[0]), i = bins.map((b) => b[1]), n = bins.length || 1;
+  const mE = e.reduce((a, c) => a + c, 0) / n, mI = i.reduce((a, c) => a + c, 0) / n;
+  const vE = e.reduce((a, c) => a + (c - mE) ** 2, 0) / n;
+  return { rE: (mE * 1000) / nE, rI: (mI * 1000) / nI, sync: mE > 0 ? vE / mE : 0 };
+}
+
+// ── Demo 1 ───────────────────────────────────────────────────────────
+const PRESETS = {
+  rhythm: { drive: 3, drivei: 0.5, we: 0.6, g: 5, noise: 0.5 },
+  calm: { drive: 2, drivei: 2, we: 0.6, g: 5, noise: 3 },
+  seizure: { drive: 3, drivei: 0.5, we: 0.6, g: 0, noise: 0.5 },
+  silent: { drive: 1, drivei: 0.5, we: 0.6, g: 5, noise: 0.5 },
+};
+const net1 = new Network({ seed: 1 });
+const d1 = { run: playToggle("n-pause"), bins: [], spikes: [], last: { rE: 0, rI: 0, sync: 0 }, firedLastMs: 0, firedNow: 0 };
+watch($("d1").closest("section"), d1.run);
+const SHOW_E = 200, SHOW_I = 50, WIN = 250; // raster: neurons shown, window in ms
+const eeg1 = new Scope($("eeg1"), { height: 110, yMin: 0, yMax: 70, yLabel: "nA", window: WIN, lines: [{ color: "--model" }] });
+slider("n-drive", (v) => v.toFixed(1) + " nA", (v) => { net1.drive = v; mark(); });
+slider("n-drivei", (v) => v.toFixed(1) + " nA", (v) => { net1.driveI = v; mark(); });
+slider("n-we", (v) => v.toFixed(2) + " nA", (v) => { net1.wE = v; mark(); });
+slider("n-g", (v) => v.toFixed(1) + "×", (v) => { net1.g = v; mark(); });
+slider("n-noise", (v) => v.toFixed(1), (v) => { net1.noise = v; mark(); });
+function mark() { // highlight the preset that matches the sliders, if any
+  for (const b of document.querySelectorAll(".presets button")) {
+    const p = PRESETS[b.dataset.p];
+    const same = Math.abs(p.drive - net1.drive) < 1e-6 && Math.abs(p.drivei - net1.driveI) < 1e-6 && Math.abs(p.we - net1.wE) < 1e-6 && Math.abs(p.g - net1.g) < 1e-6 && Math.abs(p.noise - net1.noise) < 1e-6;
+    b.setAttribute("aria-pressed", same ? "true" : "false");
+  }
+}
+document.querySelector(".presets").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-p]"); if (!b) return;
+  const p = PRESETS[b.dataset.p];
+  for (const [k, v] of [["n-drive", p.drive], ["n-drivei", p.drivei], ["n-we", p.we], ["n-g", p.g], ["n-noise", p.noise]]) {
+    $(k).value = v; $(k).dispatchEvent(new Event("input"));
+  }
+  if (d1.run.paused) $("n-pause").click();
+});
+
+function frame1() {
+  for (let ms = 0; ms < 4; ms++) { // 4 ms of brain time per frame
+    let nE = 0, nI = 0;
+    for (let s = 0; s < 10; s++) {
+      for (const k of net1.step(DT)) {
+        if (k < net1.NE) { nE++; if (k < SHOW_E) d1.spikes.push([net1.t, k]); }
+        else { nI++; if (k - net1.NE < SHOW_I) d1.spikes.push([net1.t, SHOW_E + k - net1.NE]); }
+      }
+    }
+    d1.bins.push([nE, nI]); d1.firedLastMs = nE + nI;
+    if (d1.bins.length > 500) d1.bins.shift();
+    eeg1.push([net1.eeg()]);
+  }
+  while (d1.spikes.length && d1.spikes[0][0] < net1.t - WIN) d1.spikes.shift();
+  d1.last = stats(d1.bins, net1.NE, net1.NI);
+  drawRaster(); eeg1.draw();
+  $("rE").textContent = d1.last.rE.toFixed(1) + " Hz";
+  $("rI").textContent = d1.last.rI.toFixed(1) + " Hz";
+  $("sync").textContent = d1.last.sync.toFixed(1) + "× random";
+}
+function drawRaster() {
+  const cv = $("raster"), { ctx, w, h } = fitCanvas(cv, 220);
+  const L = 44, R = 8, T = 6, B = 6, pw = w - L - R, ph = h - T - B, rows = SHOW_E + SHOW_I;
+  ctx.clearRect(0, 0, w, h);
+  ctx.font = "12px -apple-system, system-ui, sans-serif"; ctx.fillStyle = css("--label-2");
+  ctx.fillText("E", 4, T + (ph * SHOW_E) / rows / 2 + 4);
+  ctx.fillText("I", 4, T + ph * (SHOW_E + SHOW_I / 2) / rows + 4);
+  ctx.strokeStyle = css("--grid"); ctx.beginPath(); ctx.moveTo(L, T + (ph * SHOW_E) / rows); ctx.lineTo(w - R, T + (ph * SHOW_E) / rows); ctx.stroke();
+  const t0 = net1.t - WIN, cE = css("--accent"), cI = css("--k"), dot = Math.max(1.5, ph / rows);
+  for (const [t, r] of d1.spikes) {
+    ctx.fillStyle = r < SHOW_E ? cE : cI;
+    ctx.fillRect(L + ((t - t0) / WIN) * pw, T + (r / rows) * ph, 1.5, dot);
+  }
+}
+function code1() {
+  paint("code1", [
+    C("# fixed: dt = 0.1 ms; 800 E + 200 I"),
+    C("# W[j, k] = 1 if k → j (10% chance)"),
+    C("# E = first 800; LIF constants as"),
+    C("# Step 1 (tau 15, R 10, −70/−55/−75)"),
+    C("# inputs: the sliders"),
+    `drive_E = ${IN(net1.drive.toFixed(1))}  drive_I = ${IN(net1.driveI.toFixed(1))}`,
+    `w_E = ${IN(net1.wE.toFixed(2))}  g = ${IN(net1.g.toFixed(1))}`,
+    `noise = ${IN(net1.noise.toFixed(1))}`,
+    "",
+    C("# every step, all 1,000 at once:"),
+    `I_E -= dt / 3 * I_E  ${C("# AMPA fades")}`,
+    `I_I -= dt / 8 * I_I  ${C("# GABA fades")}`,
+    "rest = refractory &gt; 0",
+    "refractory[rest] -= dt",
+    "V[rest] = V_reset",
+    "ok = ~rest",
+    "ext = np.where(E, drive_E, drive_I)",
+    "I = ext + noise * 1.5 * randn(N) \\\\",
+    "    + I_E - I_I",
+    "V[ok] += dt / 15 * (",
+    "    -(V[ok] - V_rest) + R * I[ok])",
+    "fired = ok &amp; (V &gt;= threshold)",
+    "V[fired] = V_reset",
+    "refractory[fired] = 2",
+    `${C("# → spikes in the last ms:")} ${OUT(d1.firedLastMs)}`,
+    "",
+    C("# deliver spikes (felt next step)"),
+    "fE = np.flatnonzero(fired[:800])",
+    "fI = 800 + np.flatnonzero(fired[800:])",
+    "I_E += w_E * W[:, fE].sum(1)",
+    "I_I += g * w_E * W[:, fI].sum(1)",
+    "",
+    C("# rates and synchrony: last 0.5 s"),
+    `${C("# → E")} ${OUT(d1.last.rE.toFixed(1) + " Hz")}  ${C("I")} ${OUT(d1.last.rI.toFixed(1) + " Hz")}`,
+    `${C("# → synchrony")} ${OUT(d1.last.sync.toFixed(1) + "×")}`,
+  ]);
+}
+
+// ── Demo 2 ───────────────────────────────────────────────────────────
+const net2 = new Network({ seed: 1 }); // same wiring as Demo 1
+Object.assign(net2, { drive: 3, driveI: 0.5, wE: 0.6, g: 5, noise: 0.5, tauI: 8 });
+const d2 = { run: playToggle("n2-pause"), eeg: [], spec: [], peak: null, sinceSpec: 0, sinceChange: 0 };
+watch($("d2").closest("section"), d2.run);
+const eeg2 = new Scope($("eeg2"), { height: 110, yMin: 0, yMax: 70, yLabel: "nA", window: WIN, lines: [{ color: "--model" }] });
+slider("n2-taui", (v) => v + " ms", (v) => { net2.tauI = v; d2.sinceChange = 0; });
+
+function frame2() {
+  for (let ms = 0; ms < 4; ms++) {
+    for (let s = 0; s < 10; s++) net2.step(DT);
+    const x = net2.eeg(); // one sample per ms
+    d2.eeg.push(x); if (d2.eeg.length > 1024) d2.eeg.shift();
+    eeg2.push([x]); d2.sinceSpec++; d2.sinceChange++;
+  }
+  eeg2.draw();
+  if (d2.sinceSpec >= 100 && d2.eeg.length === 1024) { d2.sinceSpec = 0; updateSpectrum(); }
+}
+function updateSpectrum() {
+  d2.spec = spectrum(d2.eeg, 1, 100);
+  const inRange = d2.spec.filter((s) => s.f >= 3);
+  d2.peak = inRange.reduce((a, b) => (b.p > a.p ? b : a));
+  drawSpectrum();
+}
+function drawSpectrum() {
+  const pts = d2.spec.map((s) => [s.f, s.p]);
+  const top = Math.max(1e-9, ...pts.map((p) => p[1]));
+  xyPlot($("spec"), { height: 170, xMax: 100, yMax: 1, xLabel: "Hz", yLabel: "power (relative)",
+    series: [{ points: pts.map(([f, p]) => [f, p / top]), color: "--model" }],
+    marker: d2.peak ? { x: d2.peak.f, y: d2.peak.p / top, color: "--real" } : null });
+  const settled = d2.sinceChange >= 1024;
+  $("pk").textContent = d2.peak ? (settled ? "" : "~") + d2.peak.f.toFixed(0) + " Hz" : "–";
+  const b = d2.peak && bandOf(d2.peak.f);
+  $("band").textContent = b ? b.name[0].toUpperCase() + b.name.slice(1) : "–";
+}
+function code2() {
+  const filling = d2.eeg.length < 1024 ? ` ${C("(filling…)")}` : "";
+  const b = d2.peak && bandOf(d2.peak.f);
+  paint("code2", [
+    C("# input: how long GABA lasts"),
+    `tau_I = ${IN(net2.tauI)}  ${C("# ms")}`,
+    C("# (rest as Rhythm in Demo 1)"),
+    "",
+    C("# record 1 EEG sample per ms:"),
+    "eeg.append(np.mean(",
+    "    I_E[:800] + I_I[:800]))",
+    `${C("# → now")} ${OUT(num(net2.eeg(), 2) + " nA")}`,
+    "",
+    C("# every 0.1 s, last 1,024 samples:"),
+    `x = np.array(eeg[-1024:])${filling}`,
+    "x = (x - x.mean()) * np.hanning(1024)",
+    "p = np.abs(np.fft.rfft(x)) ** 2",
+    "f = np.fft.rfftfreq(1024, d=0.001)",
+    "m = (f &gt;= 3) &amp; (f &lt;= 100)",
+    "peak = f[m][np.argmax(p[m])]",
+    `${C("# → peak")} ${OUT(d2.peak ? d2.peak.f.toFixed(1) + " Hz" : "–")}  ${C("band")} ${OUT(b ? b.name : "–")}`,
+  ]);
+}
+
+// ── Main loop ────────────────────────────────────────────────────────
+let frame = 0;
+(function loop() {
+  if (!d1.run.paused && d1.run.visible) frame1();
+  if (!d2.run.paused && d2.run.visible) frame2();
+  if (frame++ % 4 === 0) { code1(); code2(); }
+  requestAnimationFrame(loop);
+})();
+mark();
+addEventListener("resize", () => { drawRaster(); if (d2.spec.length) drawSpectrum(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawRaster(); if (d2.spec.length) drawSpectrum(); });
+
+// ── Quiz ─────────────────────────────────────────────────────────────
+const QUIZ = [
+  { q: "What happens when you remove inhibition?", o: ["The brain goes quiet", "Runaway, nonstop firing, like a seizure", "A slower rhythm"], a: 1,
+    why: "Excitation feeds itself. Without brakes, every neuron fires as fast as it can." },
+  { q: "In Calm, neurons still fire but the EEG is flat. Why?", o: ["EEG only sees inhibitory cells", "Out-of-sync currents cancel when summed", "The neurons are too slow"], a: 1,
+    why: "EEG sums currents from many cells. Only synchronised activity adds up." },
+  { q: "Making inhibition last longer (bigger τ_I) makes the rhythm…", o: ["Faster", "Slower", "Disappear"], a: 1,
+    why: "Each cycle waits for the brake to wear off, so longer brakes mean fewer cycles per second." },
+];
+$("quiz").innerHTML = QUIZ.map((x, i) => `
+  <div class="q" role="group" aria-labelledby="q${i}"><h3 id="q${i}">${i + 1}. ${x.q}</h3>
+  <div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div>
+  <p class="why" id="why-${i}" aria-live="polite"></p></div>`).join("");
+$("quiz").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]"); if (!b) return;
+  const x = QUIZ[+b.dataset.q], right = +b.dataset.o === x.a;
+  b.parentElement.querySelectorAll("button").forEach((o) => o.classList.remove("right", "wrong"));
+  b.classList.add(right ? "right" : "wrong");
+  $("why-" + b.dataset.q).textContent = (right ? "✓ Correct. " : "✕ Not quite. ") + x.why;
+});
+const done = $("done");
+done.checked = isDone(3);
+done.onchange = () => setDone(3, done.checked);
+</script>
+</body>
+</html>

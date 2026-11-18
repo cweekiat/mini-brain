@@ -19,7 +19,7 @@ Every step is a web page with:
 |---|------|-------|--------|
 | 1 | One neuron: leaky bucket + Hodgkin–Huxley ion channels | Cellular | ✅ |
 | 2 | Two neurons that learn: synapses, STDP, Pavlov's bell | Cellular | ✅ |
-| 3 | Brain waves from 1,000 neurons | Physiological | ⏳ |
+| 3 | Brain waves from 1,000 neurons: E/I network, gamma, EEG spectrum | Physiological | ✅ |
 | 4 | Memory recall from partial cues | Physiological | ⏳ |
 | 5 | Working memory | Physiological | ⏳ |
 | 6 | Decisions | Physiological | ⏳ |
