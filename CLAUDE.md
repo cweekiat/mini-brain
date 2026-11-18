@@ -19,7 +19,8 @@ A learning site about building a scaled-down brain, written for a university stu
 6. **The equations**: `.eq` blocks (colour-coded terms) plus a `.terms-grid` explaining every symbol; exact constants in a `<details>`
 7. **Real vs our model**: `.vs` items with `.pair .r` / `.pair .m`
 8. Optional `<details>`: why this simplification, the equation
-9. **Key terms**: `dl.terms`, one-line definitions
+9. **Beyond the lab**: two cards, “Emerging tech” (neuromorphic computing, BCIs such as Neuralink, AI…) and “For good” (medicine, rehab, accessibility, ethics), tied to this step's idea. Facts must be well established; give years, avoid hype, and hedge anything still in trials. The home page's “Where this leads” section links the themes across steps
+9b. **Key terms**: `dl.terms`, one-line definitions
 10. **Run it yourself**: link to `python/stepNN_<slug>.py`, the same models in NumPy, checked to give the same numbers as the browser
 11. **Check yourself**: 3-question quiz, a “Mark as done” toggle, and a `.pager`
 
@@ -29,3 +30,4 @@ A learning site about building a scaled-down brain, written for a university stu
 - To add a step: create `steps/NN-slug.html`, set `ready: true` in `assets/steps.js`, and tick it in README.md. Link the previous step's pager “Next” to it.
 - Verify numbers against the literature before claiming a match.
 - A hidden browser pane pauses `requestAnimationFrame`. To test, load the page in an iframe with rAF patched to setTimeout.
+- When a step page changes the shared stylesheet, bump the `?v=` number on every page's stylesheet link (Pages caches files for ~10 min).
