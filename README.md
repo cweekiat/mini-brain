@@ -9,7 +9,7 @@ Every step is a web page with:
 - a plain-language **analogy**
 - a **live demo** running a real neuroscience model in your browser
 - **“Try this”** experiments
-- **live code beside every demo**: the real code with your inputs and its outputs filled in as it runs
+- **live Python code beside every demo**: your inputs and its outputs filled in as it runs
 - a **real brain vs artificial brain** comparison
 - a quick **check** quiz
 
@@ -18,7 +18,7 @@ Every step is a web page with:
 | # | Step | Level | Status |
 |---|------|-------|--------|
 | 1 | One neuron: leaky bucket + Hodgkin–Huxley ion channels | Cellular | ✅ |
-| 2 | Two neurons that learn (synapses, STDP) | Cellular | ⏳ |
+| 2 | Two neurons that learn: synapses, STDP, Pavlov's bell | Cellular | ✅ |
 | 3 | Brain waves from 1,000 neurons | Physiological | ⏳ |
 | 4 | Memory recall from partial cues | Physiological | ⏳ |
 | 5 | Working memory | Physiological | ⏳ |
@@ -29,6 +29,18 @@ Every step is a web page with:
 | 10 | Rhythmic movement (central pattern generator) | Physiological | ⏳ |
 | 11 | A whole fruit-fly brain (FlyWire connectome) | Anatomical | ⏳ |
 | 12 | The whole human brain as ~80 connected regions | Anatomical | ⏳ |
+
+## Python versions
+
+Every step has a plain-Python version of its models in `python/` (NumPy + Matplotlib), matching the live code panels:
+
+```bash
+pip install -r python/requirements.txt
+```
+
+```bash
+python python/step02_synapse.py
+```
 
 ## Run locally
 
@@ -48,5 +60,7 @@ steps/NN-name.html    one page per step (lesson + live demos)
 assets/style.css      shared styles (light + dark)
 assets/plot.js        tiny canvas plotting helpers
 assets/steps.js       the list of steps: drives nav, roadmap, scoreboard
-assets/sim/*.js       the brain models, one file per topic
+assets/sim/*.js       the brain models, one file per topic (run in the browser)
+assets/livecode.js    helpers for the live Python code panels
+python/stepNN_*.py    the same models in Python, runnable locally
 ```

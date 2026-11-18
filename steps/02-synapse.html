@@ -1,0 +1,545 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Two neurons that learn · Mini Brain</title>
+<meta name="description" content="Step 2: synapses and learning. Connect two neurons, watch spike timing change their connection, and train Pavlov's bell.">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M18 56h20l8-30 9 48 7-18h20' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="../assets/style.css">
+<style>
+  .meter { position: relative; height: 14px; border-radius: 7px; background: var(--fill); margin: 0.5rem 0 1.5rem; }
+  .meter .fill { position: absolute; inset: 0 auto 0 0; border-radius: 7px; background: var(--accent); }
+  .meter .mark { position: absolute; top: -4px; bottom: -4px; border-left: 2px dashed var(--real); }
+  .meter .mark span { position: absolute; top: 20px; left: -40px; width: 80px; text-align: center; font-size: 0.75rem; color: var(--real); }
+  .verdict { font-weight: 700; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="navbar"><div class="wrap">
+  <a class="back" href="../index.html#roadmap">Roadmap</a>
+  <span class="meta">Step 2 of 12</span>
+</div></header>
+
+<main class="wrap" id="main">
+  <p class="eyebrow">Step 2 · Cellular</p>
+  <h1>Two neurons that learn</h1>
+  <p class="lede">How one neuron talks to another, and how that connection learns.</p>
+
+  <div class="card">
+    <h3>You'll learn</h3>
+    <ul class="goals">
+      <li>What a synapse does, and why one input is rarely enough</li>
+      <li>How spike timing makes a synapse stronger or weaker</li>
+      <li>How that simple rule produces Pavlov-style learning</li>
+      <li>The Python behind each of these</li>
+    </ul>
+  </div>
+
+  <h2>The idea</h2>
+  <div class="card">
+    <p class="idea">A synapse is a <b>volume knob</b> between two neurons. When neuron A fires, B gets a small push. The knob sets how big the push is.</p>
+    <ul>
+      <li><b>One push is rarely enough.</b> Several must add up to fire B.</li>
+      <li><b>Pushes can be negative.</b> Inhibitory synapses quiet B down.</li>
+      <li><b>The knob turns itself.</b> If A keeps firing just <i>before</i> B, it gets louder.</li>
+    </ul>
+  </div>
+
+  <h2>Demo 1 · A synapse</h2>
+<div class="duo">
+  <section class="card" aria-labelledby="d1">
+    <div class="demo-head"><h3 id="d1">Neuron A → synapse → neuron B</h3><span class="speed">Slowed 8×</span></div>
+    <canvas class="plot" id="s1-a" role="img" aria-label="Live voltage of neuron A"></canvas>
+    <div class="legend"><span><i style="background:var(--label-2)"></i>Neuron A voltage</span></div>
+    <canvas class="plot" id="s1-i" role="img" aria-label="Live synaptic current into neuron B" style="margin-top:8px"></canvas>
+    <div class="legend"><span><i style="background:var(--model)"></i>Synapse current into B</span></div>
+    <canvas class="plot" id="s1-b" role="img" aria-label="Live voltage of neuron B" style="margin-top:8px"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Neuron B voltage</span><span><i class="dash"></i>Threshold</span></div>
+    <div class="stats">
+      <span class="stat">A rate<b id="s1-ar">0 Hz</b></span>
+      <span class="stat">B rate<b id="s1-br">0 Hz</b></span>
+      <span class="stat">Last bump in B<b id="s1-psp">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="s1-ain">A's input <output for="s1-ain"></output></label><input type="range" id="s1-ain" min="0" max="4" step="0.05" value="0"><p class="hint">Fires above ~1.5 nA</p></div>
+      <div class="ctrl"><label for="s1-w">Weight <output for="s1-w"></output></label><input type="range" id="s1-w" min="0" max="10" step="0.1" value="4"><p class="hint">Size of each push</p></div>
+      <div class="ctrl"><label for="s1-bin">B's other input <output for="s1-bin"></output></label><input type="range" id="s1-bin" min="0" max="2.5" step="0.05" value="0"><p class="hint">Input from elsewhere</p></div>
+      <div><label class="toggle"><input type="checkbox" id="s1-inh"> Inhibitory synapse (like GABA)</label></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="s1-fire">Fire A</button>
+      <button id="s1-pause">Pause</button>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c1">
+    <div class="demo-head"><h3 id="c1">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code1" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Weight 4. Press <b>Fire A</b>.<span class="see">B gets one bump of ~8 mV. Not enough to fire.</span></span></li>
+      <li><span>Raise the weight to 9. Fire A.<span class="see">Now one spike from A is enough to fire B.</span></span></li>
+      <li><span>Weight 5. Set A's input to 2, then 3.<span class="see">At 2, B stays silent. At 3, A fires faster, bumps pile up, and B fires. That's summation.</span></span></li>
+      <li><span>B's other input 1.8, then switch on <b>Inhibitory</b> and set A's input to 3.<span class="see">A now silences B instead.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>How a real synapse works</h2>
+  <div class="card">
+    <h3>1. Passing the message</h3>
+    <ol class="tasks">
+      <li><span><b>Spike arrives</b> at A's axon tip.<span class="see">Calcium rushes in.</span></span></li>
+      <li><span><b>Transmitter is released</b> (glutamate) in under 1 ms.<span class="see">It drifts across a 20 nm gap.</span></span></li>
+      <li><span><b>Receptors on B open</b> and let sodium in.<span class="see">B gets a small bump: an EPSP, about 0.5–1 mV.</span></span></li>
+      <li><span><b>The bump fades</b> in 10–20 ms.<span class="see">Transmitter is cleared away, ready for the next spike.</span></span></li>
+    </ol>
+    <p class="sub" style="margin-top:0.5rem">Inhibitory synapses release GABA instead. It lets chloride in and pushes B <i>down</i> (an IPSP).</p>
+  </div>
+  <div class="card">
+    <h3>2. Learning: the NMDA receptor</h3>
+    <p>One receptor, NMDA, is a <b>coincidence detector</b>. It only opens when <i>both</i> happen:</p>
+    <ul>
+      <li>A just released glutamate, <b>and</b></li>
+      <li>B is already firing (which pops out a magnesium plug).</li>
+    </ul>
+    <p>Then calcium floods into B, and B adds more receptors: the synapse gets <b>stronger (LTP)</b>. If B fired first, a small calcium trickle removes receptors instead: <b>weaker (LTD)</b>.</p>
+    <p class="sub">This is Hebb's 1949 idea, “fire together, wire together”, with a twist: <b>order matters</b>.</p>
+  </div>
+
+  <h2>Demo 2 · Timing decides learning</h2>
+  <p class="sub">Like the lab experiment (Bi &amp; Poo, 1998), we force A and B to fire at set times, over and over, and watch the weight change.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d2">
+    <div class="demo-head"><h3 id="d2">Spike-timing-dependent plasticity</h3><span class="speed">Slowed 8×</span></div>
+    <canvas class="plot" id="s2-v" role="img" aria-label="Live voltages of neurons A and B being forced to fire in pairs"></canvas>
+    <div class="legend"><span><i style="background:var(--label-2)"></i>A fires</span><span><i style="background:var(--accent)"></i>B fires</span></div>
+    <div class="controls" style="margin-top:4px">
+      <div><p class="foot" style="margin:0 0 4px">Weight after each pair</p><canvas class="plot" id="s2-w" role="img" aria-label="Synapse weight after each pairing"></canvas></div>
+      <div><p class="foot" style="margin:0 0 4px">Change per pair vs timing</p><canvas class="plot" id="s2-curve" role="img" aria-label="STDP curve: B after A (positive Δt) strengthens, B before A weakens, both fading as the gap grows"></canvas></div>
+    </div>
+    <div class="stats">
+      <span class="stat">Pairs<b id="s2-n">0</b></span>
+      <span class="stat">Weight<b id="s2-wv">5.00</b></span>
+      <span class="stat">Last change<b id="s2-dw">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="s2-dt">Timing: B fires after A by <output for="s2-dt"></output></label><input type="range" id="s2-dt" min="-50" max="50" step="1" value="10"><p class="hint">Negative = B fires first</p></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="s2-run">Start Pairing</button>
+      <button id="s2-reset">Reset Weight</button>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c2">
+    <div class="demo-head"><h3 id="c2">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code2" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Timing +10 ms. <b>Start Pairing</b>.<span class="see">A always fires first, so the weight climbs.</span></span></li>
+      <li><span>Set timing to −10 ms.<span class="see">B fires first now. The weight falls.</span></span></li>
+      <li><span>Try +40 ms.<span class="see">Too far apart. The weight barely moves.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>Demo 3 · Pavlov's bell</h2>
+  <p class="sub">Neuron A hears a <b>bell</b>. Neuron B makes the dog <b>drool</b>. Food always makes B fire. Can the bell learn to do it alone?</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d3">
+    <div class="demo-head"><h3 id="d3">Learning by association</h3><span class="speed">Slowed 10×</span></div>
+    <canvas class="plot" id="s3-b" role="img" aria-label="Live voltage of the drool neuron B"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>B (drool) voltage</span><span><i class="dash"></i>Threshold</span></div>
+    <canvas class="plot" id="s3-in" role="img" aria-label="Live inputs to neuron B from the bell synapse and from food" style="margin-top:8px"></canvas>
+    <div class="legend"><span><i style="background:var(--model)"></i>Bell's push (via the synapse)</span><span><i style="background:var(--na)"></i>Food's push</span></div>
+    <p class="foot" style="margin:0.75rem 0 0">Bell → B weight</p>
+    <div class="meter" role="img" id="s3-meter-wrap" aria-label="Bell synapse weight"><div class="fill" id="s3-fill"></div><div class="mark" id="s3-mark"><span>Fires B alone</span></div></div>
+    <div class="stats">
+      <span class="stat">Training trials<b id="s3-n">0</b></span>
+      <span class="stat">Weight<b id="s3-w">2.5</b></span>
+      <span class="stat">Bell alone<b id="s3-verdict" class="verdict">No drool</b></span>
+    </div>
+    <div class="btns">
+      <button id="s3-bell">Ring Bell</button>
+      <button class="primary" id="s3-train">Bell, Then Food</button>
+      <button id="s3-auto">Train ×10</button>
+      <button id="s3-wrong">Food, Then Bell</button>
+      <button id="s3-reset">Reset</button>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c3">
+    <div class="demo-head"><h3 id="c3">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code3" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Press <b>Ring Bell</b>.<span class="see">A small bump in B. No drool.</span></span></li>
+      <li><span>Press <b>Bell, Then Food</b> a few times.<span class="see">The bell's push grows with every trial.</span></span></li>
+      <li><span>Keep going until the weight passes the line, then <b>Ring Bell</b>.<span class="see">B fires to the bell alone. It learned.</span></span></li>
+      <li><span>Press <b>Reset</b>, then <b>Food, Then Bell</b> a few times.<span class="see">Wrong order: the bell comes too late to cause B, so the link weakens.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>The equations</h2>
+  <div class="card">
+    <h3>Equation 1 · The synapse</h3>
+    <p>Each spike from A adds a kick that fades away.</p>
+    <div class="eq" role="math" aria-label="tau s times d I syn by d t equals minus I syn, and I syn increases by w at every spike of A">
+      <span class="ln"><i>τ<sub>s</sub></i> · d<i>I</i><sub>syn</sub>/d<i>t</i> = −<i>I</i><sub>syn</sub></span>
+      <span class="ln">at each A spike: <i>I</i><sub>syn</sub> ← <i>I</i><sub>syn</sub> + <i>w</i></span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>I</i><sub>syn</sub></span><span>Current flowing into B through the synapse.</span></div>
+      <div><span class="sym"><i>w</i></span><span>The weight: the volume knob. Negative = inhibitory.</span></div>
+      <div><span class="sym"><i>τ<sub>s</sub></i> = 5 ms</span><span>How fast the receptors close again.</span></div>
+    </div>
+    <p class="sub" style="margin-top:0.75rem">B is the leaky bucket from Step 1, with <i>I</i><sub>syn</sub> added to its input.</p>
+  </div>
+  <div class="card">
+    <h3>Equation 2 · The learning rule (STDP)</h3>
+    <p>The weight change depends on the gap Δ<i>t</i> = <i>t</i><sub>B</sub> − <i>t</i><sub>A</sub>.</p>
+    <div class="eq" role="math" aria-label="If delta t is positive, delta w equals A plus times e to the minus delta t over tau plus. If negative, delta w equals minus A minus times e to the delta t over tau minus.">
+      <span class="ln k">Δ<i>t</i> &gt; 0:  Δ<i>w</i> = +<i>A</i><sub>+</sub> e<sup>−Δ<i>t</i>/<i>τ</i><sub>+</sub></sup></span>
+      <span class="ln na">Δ<i>t</i> &lt; 0:  Δ<i>w</i> = −<i>A</i><sub>−</sub> e<sup>+Δ<i>t</i>/<i>τ</i><sub>−</sub></sup></span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym">Δ<i>t</i> &gt; 0</span><span>A fired first and may have helped cause B. Strengthen.</span></div>
+      <div><span class="sym">Δ<i>t</i> &lt; 0</span><span>B fired first, so A couldn't have caused it. Weaken.</span></div>
+      <div><span class="sym"><i>A</i><sub>+</sub>, <i>A</i><sub>−</sub></span><span>Maximum change per pair (0.80 and 0.85).</span></div>
+      <div><span class="sym"><i>τ</i> = 20 ms</span><span>How fast the effect fades with a bigger gap.</span></div>
+    </div>
+    <p class="sub" style="margin-top:0.75rem">In code, each neuron keeps a fading “trace” of its last spike. Reading the other neuron's trace gives e<sup>−|Δ<i>t</i>|/<i>τ</i></sup> without storing any spike times.</p>
+  </div>
+
+  <h2>Real vs our model</h2>
+  <div class="card vs">
+    <div class="item"><h3>Bump size</h3><div class="pair"><div class="r"><span>Real</span>0.5–1 mV. Dozens of inputs needed.</div><div class="m"><span>Our model</span>~2 mV per weight unit. One strong synapse can fire B.</div></div></div>
+    <div class="item"><h3>Reliability</h3><div class="pair"><div class="r"><span>Real</span>Release often fails, 50–90% of the time.</div><div class="m"><span>Our model</span>Works every time.</div></div></div>
+    <div class="item"><h3>Timing window</h3><div class="pair"><div class="r"><span>Real</span>About ±20 ms in many synapses.</div><div class="m"><span>Our model</span>τ = 20 ms ✓</div></div></div>
+    <div class="item"><h3>Learning speed</h3><div class="pair"><div class="r"><span>Real</span>Dozens of pairings, then hours to lock in.</div><div class="m"><span>Our model</span>About 9 pairings, instantly.</div></div></div>
+    <div class="item"><h3>Connections</h3><div class="pair"><div class="r"><span>Real</span>~7,000 synapses per neuron.</div><div class="m"><span>Our model</span>One. Networks start in Step 3.</div></div></div>
+  </div>
+
+  <h2>Key terms</h2>
+  <div class="card">
+    <dl class="terms">
+      <div><dt>Synapse</dt><dd>The junction where one neuron passes a signal to another.</dd></div>
+      <div><dt>Presynaptic / postsynaptic</dt><dd>The sending neuron (A) / the receiving neuron (B).</dd></div>
+      <div><dt>Neurotransmitter</dt><dd>The chemical messenger: glutamate excites, GABA inhibits.</dd></div>
+      <div><dt>EPSP / IPSP</dt><dd>A small push up / down in B's voltage after one input spike.</dd></div>
+      <div><dt>Synaptic weight</dt><dd>How strong a connection is.</dd></div>
+      <div><dt>Summation</dt><dd>Bumps adding up when they arrive close together.</dd></div>
+      <div><dt>LTP / LTD</dt><dd>Long-term potentiation / depression: lasting strengthening / weakening.</dd></div>
+      <div><dt>STDP</dt><dd>Learning rule where spike order and timing decide LTP or LTD.</dd></div>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3>Run it yourself</h3>
+    <p class="sub">The same models in plain Python with NumPy and Matplotlib: <a href="https://github.com/cweekiat/mini-brain/blob/main/python/step02_synapse.py">step02_synapse.py</a></p>
+  </div>
+
+  <h2>Check yourself</h2>
+  <div class="card" id="quiz"></div>
+
+  <div class="card">
+    <label class="toggle" style="font-size:1.0625rem"><input type="checkbox" id="done"> Mark Step 2 as done</label>
+  </div>
+
+  <nav class="pager" aria-label="Steps">
+    <a href="01-neuron.html"><small>Previous</small>One neuron</a>
+    <span class="next"><small>Next · Coming soon</small>Brain waves</span>
+  </nav>
+</main>
+
+<footer><div class="wrap foot">STDP timing: Bi &amp; Poo (1998), J. Neurosci. 18:10464. Hebb (1949), The Organization of Behavior.</div></footer>
+
+<script type="module">
+import { LIF } from "../assets/sim/neuron.js";
+import { Synapse, STDP } from "../assets/sim/synapse.js";
+import { Scope, xyPlot, slider } from "../assets/plot.js";
+import { C, K, IN, OUT, num, paint } from "../assets/livecode.js";
+import { isDone, setDone } from "../assets/steps.js";
+
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const DT = 0.1;
+const sgn = (v, d = 2) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(d);
+function rateFrom(times, now) {
+  if (times.length < 2) return 0;
+  const r = times.slice(-5), isi = (r.at(-1) - r[0]) / (r.length - 1);
+  return now - r.at(-1) > Math.max(2 * isi, 60) ? 0 : Math.round(1000 / isi);
+}
+function playToggle(id, onToggle) {
+  const btn = $(id), st = { paused: reduceMotion };
+  const label = () => (btn.textContent = st.paused ? "Play" : "Pause");
+  btn.onclick = () => { st.paused = !st.paused; label(); onToggle && onToggle(); };
+  label();
+  return st;
+}
+
+// ── Demo 1: A → synapse → B ─────────────────────────────────────────
+const d1 = { a: new LIF(), b: new LIF(), syn: new Synapse(4), t: 0, aIn: 0, bIn: 0, inh: false, zap: 0,
+  aSpikes: [], bSpikes: [], aHit: -1e9, bHit: -1e9, pspStart: null, pspPeak: null, lastPsp: null };
+const run1 = playToggle("s1-pause");
+const sA = new Scope($("s1-a"), { height: 110, yMin: -80, yMax: -35, yLabel: "A mV", window: 1500, lines: [{ color: "--label-2" }] });
+const sI = new Scope($("s1-i"), { height: 100, yMin: -10, yMax: 10, yLabel: "nA", window: 1500, lines: [{ color: "--model" }] });
+const sB = new Scope($("s1-b"), { height: 150, yMin: -85, yMax: -35, yLabel: "B mV", window: 1500, lines: [{ color: "--accent" }],
+  hlines: [{ value: -55, color: "--real", label: "threshold" }] });
+slider("s1-ain", (v) => v.toFixed(2) + " nA", (v) => (d1.aIn = v));
+slider("s1-w", (v) => v.toFixed(1), (v) => (d1.syn.w = d1.inh ? -v : v));
+slider("s1-bin", (v) => v.toFixed(2) + " nA", (v) => (d1.bIn = v));
+$("s1-inh").onchange = (e) => { d1.inh = e.target.checked; d1.syn.w = (d1.inh ? -1 : 1) * Math.abs(parseFloat($("s1-w").value)); };
+$("s1-fire").onclick = () => { d1.zap = 2.5; if (run1.paused) $("s1-pause").click(); };
+
+function frame1() {
+  for (let k = 0; k < 20; k++) { // 2 ms of brain time per frame
+    const aFired = d1.a.step(DT, d1.aIn + (d1.zap > 0 ? 12 : 0));
+    if (d1.zap > 0) d1.zap -= DT;
+    if (aFired) { d1.syn.onPreSpike(); d1.aSpikes.push(d1.t); d1.aHit = performance.now(); d1.pspStart = d1.b.V; d1.pspPeak = d1.b.V; }
+    const I = d1.syn.step(DT);
+    const bFired = d1.b.step(DT, d1.bIn + I);
+    if (bFired) { d1.bSpikes.push(d1.t); d1.bHit = performance.now(); d1.pspPeak = null; d1.lastPsp = "fired B"; }
+    if (d1.pspPeak !== null) {
+      d1.pspPeak = d1.inh ? Math.min(d1.pspPeak, d1.b.V) : Math.max(d1.pspPeak, d1.b.V);
+      if (d1.t - d1.aSpikes.at(-1) > 25) { d1.lastPsp = sgn(d1.pspPeak - d1.pspStart, 1) + " mV"; d1.pspPeak = null; }
+    }
+    d1.t += DT;
+    if (k % 2 === 1) { sA.push([aFired ? -35 : d1.a.V]); sI.push([I]); sB.push([d1.b.V], bFired ? 1 : 0); }
+  }
+  d1.aSpikes = d1.aSpikes.slice(-6); d1.bSpikes = d1.bSpikes.slice(-6);
+  sA.draw(); sI.draw(); sB.draw();
+  $("s1-ar").textContent = rateFrom(d1.aSpikes, d1.t) + " Hz";
+  $("s1-br").textContent = rateFrom(d1.bSpikes, d1.t) + " Hz";
+  $("s1-psp").textContent = d1.lastPsp ?? "–";
+}
+function code1() {
+  const now = performance.now(), aH = now - d1.aHit < 300 ? "hit" : "", bH = now - d1.bHit < 300 ? "hit" : "";
+  paint("code1", [
+    C("# inputs"),
+    `a_input = ${IN(d1.aIn.toFixed(2))}  ${C("# nA")}`,
+    `w = ${IN(d1.syn.w.toFixed(1))}  ${C("# weight, <0 inhibits")}`,
+    `b_input = ${IN(d1.bIn.toFixed(2))}`,
+    "",
+    C("# A fires → transmitter released"),
+    [`${K("if")} a.step(dt, a_input):${aH ? "  " + C("← A fired") : ""}`, aH],
+    ["    I_syn += w", aH],
+    "",
+    C("# receptors close (τ = 5 ms)"),
+    "I_syn -= dt / tau_syn * I_syn",
+    `${C("# → I_syn =")} ${OUT(num(d1.syn.I, 2) + " nA")}`,
+    "",
+    C("# B adds it to its other input"),
+    [`${K("if")} b.step(dt, b_input + I_syn):`, bH],
+    [`    ${C(bH ? "# ← B fired!" : "# B fires")}`, bH],
+    `${C("# → V_B =")} ${OUT(num(d1.b.V) + " mV")}`,
+  ]);
+}
+
+// ── Demo 2: STDP pairing ─────────────────────────────────────────────
+const W0 = 5, PERIOD = 200;
+const d2 = { a: new LIF(), b: new LIF(), syn: new Synapse(W0), stdp: new STDP(), t: 0, gap: 10, running: false,
+  next: 40, tA: null, tB: null, zapA: [], zapB: [], pairs: 0, hist: [[0, W0]], lastDw: null, measured: null, aHit: -1e9, bHit: -1e9 };
+const sV = new Scope($("s2-v"), { height: 150, yMin: -80, yMax: -35, yLabel: "mV", window: 1000, lines: [{ color: "--label-2" }, { color: "--accent" }] });
+slider("s2-dt", (v) => (v > 0 ? "+" : "") + v + " ms", (v) => { d2.gap = v; drawCurve(); });
+$("s2-run").onclick = () => { d2.running = !d2.running; $("s2-run").textContent = d2.running ? "Stop Pairing" : "Start Pairing"; };
+$("s2-reset").onclick = () => { d2.syn.w = W0; d2.pairs = 0; d2.hist = [[0, W0]]; d2.lastDw = null; drawW(); };
+
+function frame2() {
+  for (let k = 0; k < 20; k++) {
+    if (d2.running && d2.t >= d2.next) { // schedule a pair: A at base, B at base + gap
+      const base = d2.t + 60;
+      d2.zapA.push(base); d2.zapB.push(base + d2.gap); d2.next = d2.t + PERIOD; d2.wBefore = d2.syn.w; d2.tA = d2.tB = null;
+    }
+    const zA = d2.zapA.some((z) => d2.t >= z && d2.t < z + 1) ? 30 : 0;
+    const zB = d2.zapB.some((z) => d2.t >= z && d2.t < z + 1) ? 30 : 0;
+    d2.stdp.decay(DT);
+    const aF = d2.a.step(DT, zA), bF = d2.b.step(DT, zB);
+    if (aF) { d2.stdp.onPre(d2.syn); d2.tA = d2.t; d2.aHit = performance.now(); }
+    if (bF) { d2.stdp.onPost(d2.syn); d2.tB = d2.t; d2.bHit = performance.now(); }
+    if (d2.tA !== null && d2.tB !== null && d2.wBefore !== undefined) {
+      d2.pairs++; d2.lastDw = d2.syn.w - d2.wBefore; d2.measured = d2.tB - d2.tA;
+      d2.hist.push([d2.pairs, d2.syn.w]); d2.wBefore = undefined; drawW();
+    }
+    d2.zapA = d2.zapA.filter((z) => z + 1 > d2.t); d2.zapB = d2.zapB.filter((z) => z + 1 > d2.t);
+    d2.t += DT;
+    if (k % 2 === 1) sV.push([aF ? -35 : d2.a.V, bF ? -35 : d2.b.V]);
+  }
+  sV.draw();
+}
+function drawW() {
+  const n = Math.max(10, d2.pairs);
+  xyPlot($("s2-w"), { height: 170, xMax: n, yMax: 10, xLabel: "pairs", yLabel: "w", series: [{ points: d2.hist, color: "--accent" }],
+    marker: { x: d2.pairs, y: d2.syn.w, color: "--real" } });
+  $("s2-n").textContent = d2.pairs;
+  $("s2-wv").textContent = d2.syn.w.toFixed(2);
+  $("s2-dw").textContent = d2.lastDw === null ? "–" : sgn(d2.lastDw);
+}
+function drawCurve() {
+  const pts = [];
+  for (let x = -50; x <= 50; x += 0.5) if (x !== 0) pts.push([x, d2.stdp.window(x)]);
+  xyPlot($("s2-curve"), { height: 170, xMin: -50, xMax: 50, yMin: -1, yMax: 1, xLabel: "Δt (ms)", yLabel: "Δw",
+    series: [{ points: pts.filter(([x]) => x < 0), color: "--na" }, { points: pts.filter(([x]) => x > 0), color: "--k" }],
+    marker: { x: d2.gap, y: d2.stdp.window(d2.gap), color: "--real" } });
+}
+function code2() {
+  const now = performance.now(), aH = now - d2.aHit < 400 ? "hit" : "", bH = now - d2.bHit < 400 ? "hit" : "";
+  const g = d2.gap;
+  paint("code2", [
+    C("# input: B fires after A by"),
+    `gap = ${IN((g > 0 ? "+" : "") + g)}  ${C("# ms")}`,
+    "",
+    C("# traces: fading memory of spikes"),
+    "x_pre  *= exp(-dt / 20)",
+    "y_post *= exp(-dt / 20)",
+    `${C("# →")} x_pre=${OUT(d2.stdp.xPre.toFixed(2))} y_post=${OUT(d2.stdp.yPost.toFixed(2))}`,
+    "",
+    [`${K("if")} a_fired:${aH ? "  " + C("← A fired") : ""}`, aH],
+    ["    x_pre += 1", aH],
+    [`    w -= 0.85 * y_post  ${C("# A late")}`, aH],
+    [`${K("if")} b_fired:${bH ? "  " + C("← B fired") : ""}`, bH],
+    ["    y_post += 1", bH],
+    [`    w += 0.80 * x_pre  ${C("# A early")}`, bH],
+    "w = clip(w, 0, 10)",
+    "",
+    `${C("# → w =")} ${OUT(d2.syn.w.toFixed(2))}`,
+    `${C("# last pair:")} ${OUT(d2.lastDw === null ? "–" : sgn(d2.lastDw))}`,
+  ]);
+}
+
+// ── Demo 3: Pavlov's bell ────────────────────────────────────────────
+const W3 = 2.5;
+const d3 = { a: new LIF(), b: new LIF(), syn: new Synapse(W3), stdp: new STDP(), t: 0, bellZap: [], food: [], trials: 0,
+  queue: [], last: "Nothing yet", lastDw: null, bHit: -1e9, aHit: -1e9, foodNow: 0, wBefore: null, trialEnd: null };
+// The weight at which one bell spike fires B from rest
+const W_FIRE = (() => {
+  for (let w = 0; w <= 10; w += 0.05) {
+    const b = new LIF(), s = new Synapse(w); s.onPreSpike();
+    for (let t = 0; t < 60; t += DT) if (b.step(DT, s.step(DT))) return w;
+  }
+  return 10;
+})();
+$("s3-mark").style.left = (W_FIRE / 10) * 100 + "%";
+const s3B = new Scope($("s3-b"), { height: 150, yMin: -85, yMax: -35, yLabel: "B mV", window: 1200, lines: [{ color: "--accent" }],
+  hlines: [{ value: -55, color: "--real", label: "threshold" }] });
+const s3I = new Scope($("s3-in"), { height: 100, yMin: 0, yMax: 12, yLabel: "nA", window: 1200, lines: [{ color: "--model" }, { color: "--na" }] });
+
+// Each event: { at: ms from now, what }. A trial is a short script of events.
+function schedule(kind) {
+  const t0 = d3.t + 5;
+  if (kind === "bell") { d3.bellZap.push(t0); d3.last = "Bell alone"; }
+  if (kind === "train") { d3.bellZap.push(t0); d3.food.push(t0 + 4); d3.trials++; d3.last = "Bell, then food"; }
+  if (kind === "wrong") { d3.food.push(t0); d3.bellZap.push(t0 + 8); d3.last = "Food, then bell"; }
+  d3.wBefore = d3.syn.w; d3.trialEnd = t0 + 40;
+}
+$("s3-bell").onclick = () => schedule("bell");
+$("s3-train").onclick = () => schedule("train");
+$("s3-wrong").onclick = () => schedule("wrong");
+$("s3-auto").onclick = () => { for (let i = 0; i < 10; i++) d3.queue.push("train"); };
+$("s3-reset").onclick = () => { d3.syn.w = W3; d3.trials = 0; d3.queue = []; d3.lastDw = null; d3.last = "Nothing yet"; meter(); };
+
+function frame3() {
+  for (let k = 0; k < 10; k++) { // 1 ms of brain time per frame
+    if (d3.queue.length && d3.bellZap.length === 0 && d3.food.length === 0 && (d3.trialEnd === null || d3.t > d3.trialEnd + 40)) schedule(d3.queue.shift());
+    const zA = d3.bellZap.some((z) => d3.t >= z && d3.t < z + 2.5) ? 12 : 0;
+    const food = d3.food.some((z) => d3.t >= z && d3.t < z + 3) ? 12 : 0;
+    d3.stdp.decay(DT);
+    if (d3.a.step(DT, zA)) { d3.stdp.onPre(d3.syn); d3.syn.onPreSpike(); d3.aHit = performance.now(); }
+    const I = d3.syn.step(DT);
+    if (d3.b.step(DT, I + food)) { d3.stdp.onPost(d3.syn); d3.bHit = performance.now(); d3.bFiredThisTrial = true; s3B.push([-35], 1); }
+    d3.bellZap = d3.bellZap.filter((z) => z + 2.5 > d3.t); d3.food = d3.food.filter((z) => z + 3 > d3.t);
+    if (d3.trialEnd !== null && d3.t > d3.trialEnd && d3.wBefore !== null) { d3.lastDw = d3.syn.w - d3.wBefore; d3.wBefore = null; meter(); }
+    d3.t += DT;
+    if (k % 2 === 1) { s3B.push([d3.b.V]); s3I.push([Math.max(0, I), food]); }
+  }
+  s3B.draw(); s3I.draw(); meter();
+}
+function meter() {
+  $("s3-fill").style.width = (d3.syn.w / 10) * 100 + "%";
+  $("s3-n").textContent = d3.trials;
+  $("s3-w").textContent = d3.syn.w.toFixed(2);
+  const learned = d3.syn.w >= W_FIRE;
+  $("s3-verdict").textContent = learned ? "✓ Drools" : "No drool";
+  $("s3-verdict").style.color = learned ? "var(--model)" : "var(--label-2)";
+  $("s3-meter-wrap").setAttribute("aria-label", `Bell synapse weight ${d3.syn.w.toFixed(2)} of 10; fires B alone at ${W_FIRE.toFixed(2)}`);
+}
+function code3() {
+  const now = performance.now(), bH = now - d3.bHit < 400 ? "hit" : "", aH = now - d3.aHit < 400 ? "hit" : "";
+  const script = {
+    "Nothing yet": [C("# press a button")],
+    "Bell alone": ["ring(bell, t=0)"],
+    "Bell, then food": ["ring(bell, t=0)", `zap(drool, t=4)  ${C("# food")}`],
+    "Food, then bell": [`zap(drool, t=0)  ${C("# food")}`, "ring(bell, t=8)"],
+  }[d3.last];
+  paint("code3", [
+    `${C("# input: the trial you ran")}`,
+    ...script.map((l) => [l, ""]),
+    "",
+    C("# bell fires → push into drool"),
+    [`${K("if")} bell.fired:${aH ? "  " + C("← bell") : ""}`, aH],
+    ["    I_syn += w", aH],
+    [`    w -= 0.85 * y_post  ${C("# late")}`, aH],
+    C("# drool fires → STDP"),
+    [`${K("if")} drool.fired:${bH ? "  " + C("← drool!") : ""}`, bH],
+    [`    w += 0.80 * x_pre  ${C("# early")}`, bH],
+    "",
+    `${C("# → w =")} ${OUT(d3.syn.w.toFixed(2))}  ${C("Δ")} ${OUT(d3.lastDw === null ? "–" : sgn(d3.lastDw))}`,
+    `${C("# fires alone at w ≥")} ${OUT(W_FIRE.toFixed(2))}`,
+  ]);
+}
+
+// ── Main loop ────────────────────────────────────────────────────────
+const run2 = { paused: false }, run3 = { paused: false };
+let frame = 0;
+(function loop() {
+  if (!run1.paused) frame1();
+  if (!run2.paused) frame2();
+  if (!run3.paused) frame3();
+  if (frame++ % 3 === 0) { code1(); code2(); code3(); }
+  requestAnimationFrame(loop);
+})();
+drawW(); drawCurve(); meter();
+addEventListener("resize", () => { drawW(); drawCurve(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { drawW(); drawCurve(); });
+
+// ── Quiz ─────────────────────────────────────────────────────────────
+const QUIZ = [
+  { q: "A fires 10 ms before B, again and again. The A→B synapse…", o: ["Gets stronger", "Gets weaker", "Stays the same"], a: 0,
+    why: "A came first, so it may have caused B. STDP strengthens it (LTP)." },
+  { q: "One spike from A can't fire B, but fast firing from A can. Why?", o: ["Spikes get bigger when fast", "Bumps add up before they fade", "The weight changes"], a: 1,
+    why: "Each bump fades in ~5–20 ms. Fast spikes arrive before the last one fades: summation." },
+  { q: "Why does the bell alone end up making B fire?", o: ["Food changes the bell neuron", "Bell always came just before B fired, so its synapse grew", "B gets tired"], a: 1,
+    why: "Food made B fire right after the bell. STDP read that as the bell causing B and strengthened it." },
+];
+$("quiz").innerHTML = QUIZ.map((x, i) => `
+  <div class="q" role="group" aria-labelledby="q${i}"><h3 id="q${i}">${i + 1}. ${x.q}</h3>
+  <div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div>
+  <p class="why" id="why-${i}" aria-live="polite"></p></div>`).join("");
+$("quiz").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]"); if (!b) return;
+  const x = QUIZ[+b.dataset.q], right = +b.dataset.o === x.a;
+  b.parentElement.querySelectorAll("button").forEach((o) => o.classList.remove("right", "wrong"));
+  b.classList.add(right ? "right" : "wrong");
+  $("why-" + b.dataset.q).textContent = (right ? "✓ Correct. " : "✕ Not quite. ") + x.why;
+});
+const done = $("done");
+done.checked = isDone(2);
+done.onchange = () => setDone(2, done.checked);
+</script>
+</body>
+</html>
