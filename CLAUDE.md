@@ -13,9 +13,9 @@ A learning site about building a scaled-down brain, written for a university stu
 1. Eyebrow (Step N · level), Large Title, one-line lede
 2. **You'll learn**: 3–4 goals
 3. **The idea**: one analogy sentence + 3 bullets
-4. **Demo(s)** in `section.card`, each followed by a **Try it** card (`ol.tasks`, each task plus a one-line “what you'll see”)
-5. **The real [thing]**: the biology in 3–4 bullets
-6. **How it's coded**: `.card.coded` per behaviour. A “BIOLOGY · …” line, a title, a snippet of at most 8 lines in `<pre><code class="js">` (highlighted by `assets/code.js`), and one line linking it back to the demo. Snippets are simplified from `assets/sim/`, with comments on their own lines.
+4. **Demo + live code, side by side** (`div.duo` holding `section.card` and `aside.card.live-code`). The code panel shows the real algorithm, at most 36 characters a line, repainted about 20×/s from the model's state: `IN(v)` tags values the user controls, `OUT(v)` tags computed values, `C()` for comments, `K()` for keywords. Highlight the active branch (e.g. the spike `if`) with a `hit` line plus a text cue (“← fired!”). It sits side by side at 960 px+ and stacks on phones. Follow each demo with a **Try it** card (`ol.tasks`).
+5. **The real [thing]**: the biology in short cards, in stages if it's a process
+6. **The equations**: `.eq` blocks (colour-coded terms) plus a `.terms-grid` explaining every symbol; exact constants in a `<details>`
 7. **Real vs our model**: `.vs` items with `.pair .r` / `.pair .m`
 8. Optional `<details>`: why this simplification, the equation
 9. **Key terms**: `dl.terms`, one-line definitions

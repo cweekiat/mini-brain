@@ -19,6 +19,7 @@
   --na: #c93400;            /* sodium */
   --k: #5856d6;             /* potassium */
   --note-bg: #fff4e0;
+  --in-bg: #e3effc;
   --note: #7a4a00;
   --bar: rgba(242, 242, 247, 0.8);
   color-scheme: light;
@@ -28,14 +29,14 @@
     --bg: #000000; --card: #1c1c1e; --fill: #2c2c2e; --label: #ffffff; --label-2: #98989f;
     --sep: #38383a; --grid: #2c2c2e; --accent: #0a6fdc; --link: #2997ff; --real: #ff6482;
     --real-bg: #3d1422; --model: #30d158; --model-bg: #0e2e18; --na: #ff9f0a; --k: #8e8cff;
-    --note-bg: #2e2208; --note: #ffd479; --bar: rgba(0, 0, 0, 0.75); color-scheme: dark;
+    --note-bg: #2e2208; --note: #ffd479; --in-bg: #0c2a4a; --bar: rgba(0, 0, 0, 0.75); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #000000; --card: #1c1c1e; --fill: #2c2c2e; --label: #ffffff; --label-2: #98989f;
   --sep: #38383a; --grid: #2c2c2e; --accent: #0a6fdc; --link: #2997ff; --real: #ff6482;
   --real-bg: #3d1422; --model: #30d158; --model-bg: #0e2e18; --na: #ff9f0a; --k: #8e8cff;
-  --note-bg: #2e2208; --note: #ffd479; --bar: rgba(0, 0, 0, 0.75); color-scheme: dark;
+  --note-bg: #2e2208; --note: #ffd479; --in-bg: #0c2a4a; --bar: rgba(0, 0, 0, 0.75); color-scheme: dark;
 }
 @media (prefers-contrast: more) {
   :root { --label-2: #3a3a3c; --sep: #8e8e93; --grid: #c7c7cc; }
@@ -175,16 +176,55 @@ details[open] summary::after { transform: rotate(90deg); }
 details .inner { padding: 0 1rem 1rem; }
 pre { background: var(--fill); border-radius: 10px; padding: 0.75rem; overflow-x: auto; font-size: 0.8125rem; line-height: 1.5; margin: 0 0 0.75rem; }
 
-/* How it's coded: biology → code pairs */
-.coded .bio { font-size: 0.75rem; font-weight: 700; color: var(--real); margin: 0 0 2px; }
-.coded h3 { margin-bottom: 0.25rem; }
-.coded pre { margin: 0.5rem 0; }
-.coded .out { font-size: 0.9375rem; color: var(--label-2); margin: 0; }
-pre code { background: none; padding: 0; font-size: inherit; }
+/* Demo + live code, side by side on wide screens, stacked on phones */
+.duo { display: grid; gap: 0.75rem; margin-bottom: 0.75rem; }
+.duo > .card { margin-bottom: 0; }
+@media (min-width: 960px) {
+  .duo {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start;
+    width: min(76rem, calc(100vw - 48px)); margin-left: calc(50% - min(38rem, 50vw - 24px));
+  }
+  .live-code { position: sticky; top: 60px; }
+}
+.live-code .key { font-size: 0.8125rem; color: var(--label-2); margin-bottom: 0.5rem; }
+pre.code { margin: 0; font-size: 0.8125rem; line-height: 1.6; white-space: pre; }
+pre.code .line { display: block; min-height: 1.6em; margin: 0 -0.75rem; padding: 0 0.75rem; }
+pre.code .line.hit { background: var(--model-bg); }
+.lv { border-radius: 5px; padding: 0 4px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.lv.in { background: var(--in-bg); color: var(--link); }
+.lv.out { background: var(--model-bg); color: var(--model); }
 .tc { color: var(--label-2); font-style: italic; }
 .tk { color: var(--k); font-weight: 600; }
-.tn { color: var(--na); }
-@media (max-width: 420px) { pre { font-size: 0.75rem; padding: 0.625rem; } }
+@media (max-width: 420px) {
+  pre { font-size: 0.75rem; padding: 0.625rem; }
+  pre.code { font-size: 0.75rem; }
+  pre.code .line { margin: 0 -0.625rem; padding: 0 0.625rem; }
+}
+
+/* Ions and gates (Step 1) */
+.ions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ion { border-radius: 12px; padding: 0.75rem; font-size: 0.9375rem; background: var(--fill); border-top: 4px solid; }
+.ion.na { border-color: var(--na); }
+.ion.k { border-color: var(--k); }
+.ion > b { display: block; margin-bottom: 4px; }
+.ion span { display: block; color: var(--label-2); }
+.gates { display: grid; gap: 8px; }
+.gates > div { display: flex; gap: 12px; align-items: flex-start; }
+.gates p { margin: 0; font-size: 0.9375rem; }
+.g { flex: none; width: 28px; height: 28px; border-radius: 8px; color: var(--card); font-weight: 700; display: grid; place-items: center; font-style: italic; font-family: Georgia, "Times New Roman", serif; }
+@media (max-width: 420px) { .ions { grid-template-columns: 1fr; } }
+
+/* Equations */
+.eq { font-family: "STIX Two Math", "Cambria Math", Georgia, "Times New Roman", serif; font-size: 1.125rem; background: var(--fill); border-radius: 12px; padding: 0.75rem 1rem; margin: 0.5rem 0 0.75rem; line-height: 1.7; overflow-x: auto; }
+.eq i { font-style: italic; }
+.eq .ln { display: block; padding-left: 1.5em; text-indent: -1.5em; }
+.eq .na { color: var(--na); }
+.eq .k { color: var(--k); }
+.terms-grid { display: grid; gap: 0; }
+.terms-grid > div { display: grid; grid-template-columns: 7.5rem 1fr; gap: 12px; padding: 0.5rem 0; border-top: 0.5px solid var(--sep); font-size: 0.9375rem; }
+.terms-grid > div:first-child { border-top: 0; }
+.terms-grid .sym { font-family: "STIX Two Math", "Cambria Math", Georgia, serif; font-size: 1.0625rem; }
+@media (max-width: 420px) { .terms-grid > div { grid-template-columns: 1fr; gap: 0; } }
 
 /* Try it: numbered tasks */
 ol.tasks { list-style: none; padding: 0; counter-reset: t; margin: 0; }
