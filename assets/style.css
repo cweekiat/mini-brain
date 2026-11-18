@@ -248,6 +248,11 @@ ol.tasks .see { display: block; font-size: 0.9375rem; color: var(--label-2); }
 .pager .next { text-align: right; }
 .pager span { color: var(--label-2); }
 
+/* Frontier cards on home */
+.frontiers { display: grid; gap: 0.75rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.frontiers .card { margin: 0; }
+.frontiers .foot { margin: 0.5rem 0 0; color: var(--link); font-weight: 600; }
+
 /* Scale bars on home */
 .scale-row { padding: 0.5rem 0; }
 .scale-row .top { display: flex; justify-content: space-between; gap: 8px; font-size: 0.9375rem; }

@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Memory recall · Mini Brain</title>
+<meta name="description" content="Step 4: a Hopfield network stores pictures in its synapses and recalls a whole memory from a damaged cue.">
+<meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230071e3'/><path d='M18 56h20l8-30 9 48 7-18h20' stroke='white' stroke-width='8' fill='none' stroke-linejoin='round' stroke-linecap='round'/></svg>">
+<link rel="stylesheet" href="../assets/style.css?v=4">
+<style>
+  .mem-row { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+  .mem { display: grid; gap: 4px; justify-items: center; padding: 8px 4px; background: var(--fill); color: var(--label); border-radius: 12px; min-height: 44px; font-weight: 600; font-size: 0.8125rem; }
+  .mem[aria-pressed="true"] { outline: 3px solid var(--accent); outline-offset: -3px; }
+  .mem canvas { width: 100%; max-width: 64px; aspect-ratio: 1; border-radius: 6px; }
+  .grid-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); gap: 14px; align-items: start; margin-top: 0.75rem; }
+  canvas.cells { width: 100%; aspect-ratio: 1; border-radius: 10px; touch-action: none; cursor: crosshair; display: block; }
+  .bars { display: grid; gap: 8px; font-size: 0.875rem; }
+  .bar { display: grid; grid-template-columns: 3.4rem minmax(0, 1fr) 2.6rem; gap: 8px; align-items: center; }
+  .bar .track { height: 10px; border-radius: 5px; background: var(--fill); overflow: hidden; }
+  .bar .fill { height: 100%; background: var(--model); border-radius: 5px; }
+  .bar output { text-align: right; font-variant-numeric: tabular-nums; color: var(--label-2); }
+  .trio { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; text-align: center; font-size: 0.8125rem; color: var(--label-2); }
+  .trio canvas { width: 100%; aspect-ratio: 1; border-radius: 8px; display: block; margin-bottom: 4px; }
+  .status { font-weight: 600; margin: 0.25rem 0 0; }
+  @media (max-width: 480px) { .grid-wrap { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="navbar"><div class="wrap">
+  <a class="back" href="../index.html#roadmap">Roadmap</a>
+  <span class="meta">Step 4 of 12</span>
+</div></header>
+
+<main class="wrap" id="main">
+  <p class="eyebrow">Step 4 · Circuits</p>
+  <h1>Memory recall</h1>
+  <p class="lede">Show half a memory, get the whole thing back.</p>
+
+  <div class="card">
+    <h3>You'll learn</h3>
+    <ul class="goals">
+      <li>How memories can live in synapses, not in single neurons</li>
+      <li>Why a small clue brings back a whole memory</li>
+      <li>Why memory fails slowly as synapses are lost</li>
+      <li>The Python behind a Hopfield network</li>
+    </ul>
+  </div>
+
+  <h2>The idea</h2>
+  <div class="card">
+    <p class="idea">A memory is a <b>valley in a landscape</b>. Start anywhere nearby and you roll down to the bottom: the full memory.</p>
+    <ul>
+      <li><b>Storing</b> uses Step 2's rule: neurons on together get linked. That digs a valley.</li>
+      <li><b>Recalling</b> means each neuron follows the vote of its links. The picture rolls downhill.</li>
+      <li><b>Every synapse holds a little of every memory</b>, so losing a few costs little.</li>
+    </ul>
+  </div>
+
+  <h2>Demo 1 · Complete a memory</h2>
+<div class="duo">
+  <section class="card" aria-labelledby="d1">
+    <div class="demo-head"><h3 id="d1">A Hopfield network: 400 neurons, 4 memories</h3><span class="speed">Slowed down</span></div>
+    <p class="foot" style="margin:0 0 6px">Stored memories. Tap one to use it as the clue.</p>
+    <div class="mem-row" id="mems" role="group" aria-label="Stored memories"></div>
+    <div class="grid-wrap">
+      <div>
+        <canvas class="cells" id="grid" role="img" aria-label="The network: 400 neurons in a 20 by 20 grid; blue is on"></canvas>
+        <p class="foot" style="margin:4px 0 0">Each square is a neuron. Tap squares to edit the clue.</p>
+      </div>
+      <div>
+        <p class="foot" style="margin:0 0 6px">Match with each memory</p>
+        <div class="bars" id="bars"></div>
+        <p class="status" id="status" aria-live="polite">Ready</p>
+        <p class="foot" style="margin:0.75rem 0 4px">Energy (always goes down)</p>
+        <canvas class="plot" id="energy" role="img" aria-label="Network energy during recall"></canvas>
+      </div>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="m-flip">Scramble <output for="m-flip"></output></label><input type="range" id="m-flip" min="0" max="50" step="5" value="20"><p class="hint">Pixels flipped at random</p></div>
+      <div class="ctrl"><label for="m-hide">Hide bottom <output for="m-hide"></output></label><input type="range" id="m-hide" min="0" max="80" step="10" value="0"><p class="hint">Rows blanked from the bottom</p></div>
+    </div>
+    <div class="btns">
+      <button class="primary" id="m-recall">Recall</button>
+      <button id="m-new">New Clue</button>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c1">
+    <div class="demo-head"><h3 id="c1">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code1" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Heart, scramble 20%. Press <b>Recall</b>.<span class="see">Neurons flip one by one until the full heart is back. Energy only goes down.</span></span></li>
+      <li><span>Scramble 0%, hide bottom 40%. Recall.<span class="see">The top half alone brings back the whole picture.</span></span></li>
+      <li><span>Scramble 45%. Recall a few times.<span class="see">Often it lands on a blend, or even the wrong picture: a false memory.</span></span></li>
+      <li><span>Tap squares to draw your own clue.<span class="see">The network finds the closest memory.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>How real memories work</h2>
+  <div class="card">
+    <h3>1. Where this happens</h3>
+    <p>A region called <b>CA3</b>, in the hippocampus, is wired a lot like our model: its neurons connect heavily to each other.</p>
+    <ul>
+      <li>A smell or a song (a partial clue) re-activates some neurons.</li>
+      <li>Their links pull in the rest of the pattern: <b>pattern completion</b>.</li>
+      <li>A neighbouring region (dentate gyrus) makes similar memories more different before storing them, to avoid the mix-ups you saw.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>2. Memories live in the connections</h3>
+    <p>No single neuron holds “heart”. The memory is spread over all 160,000 links. That's why:</p>
+    <ul>
+      <li><b>Losing some synapses blurs memory</b> slowly instead of deleting it.</li>
+      <li><b>Similar memories interfere</b>: they share many of the same links.</li>
+      <li><b>There's a limit</b>: about 0.14 memories per neuron in this model.</li>
+    </ul>
+  </div>
+
+  <h2>Demo 2 · Too many memories, too few synapses</h2>
+  <p class="sub">Now store random patterns, like barcodes, and test how well 5 of them come back from a 10%-scrambled clue.</p>
+<div class="duo">
+  <section class="card" aria-labelledby="d2">
+    <div class="demo-head"><h3 id="d2">Capacity and damage</h3><span class="speed">Computed</span></div>
+    <div class="trio">
+      <div><canvas id="t-cue" role="img" aria-label="Scrambled clue"></canvas>Clue</div>
+      <div><canvas id="t-out" role="img" aria-label="Recalled pattern; red squares are wrong"></canvas>Recalled</div>
+      <div><canvas id="t-true" role="img" aria-label="Original memory"></canvas>Original</div>
+    </div>
+    <p class="foot" style="margin:0.75rem 0 4px">Recall quality vs memories stored</p>
+    <canvas class="plot" id="curve" role="img" aria-label="Recall quality against number of memories, with and without synapse damage"></canvas>
+    <div class="legend"><span><i style="background:var(--accent)"></i>With your damage</span><span><i style="background:var(--label-2)"></i>Healthy (0% lost)</span><span><i class="dash"></i>0.14 × 400 = 55</span></div>
+    <div class="stats">
+      <span class="stat">Quality<b id="q">–</b></span>
+      <span class="stat">Wrong pixels<b id="wrong">–</b></span>
+    </div>
+    <div class="controls">
+      <div class="ctrl"><label for="c-p">Memories stored <output for="c-p"></output></label><input type="range" id="c-p" min="5" max="80" step="5" value="30"></div>
+      <div class="ctrl"><label for="c-dmg">Synapses lost <output for="c-dmg"></output></label><input type="range" id="c-dmg" min="0" max="90" step="10" value="0"><p class="hint">Cut at random, like synapse loss</p></div>
+    </div>
+  </section>
+  <aside class="card live-code" aria-labelledby="c2">
+    <div class="demo-head"><h3 id="c2">The code</h3><span class="speed">Python · live</span></div>
+    <p class="key"><span class="lv in">input</span> you control · <span class="lv out">output</span> computed now</p>
+    <pre class="code" id="code2" aria-live="off"></pre>
+  </aside>
+</div>
+
+  <div class="card">
+    <h3>Try it</h3>
+    <ol class="tasks">
+      <li><span>Raise memories from 30 to 60, then 80.<span class="see">Recall collapses past ~55. Too many valleys merge.</span></span></li>
+      <li><span>Back to 25 memories. Raise synapses lost to 60%.<span class="see">Still almost perfect. The memory is spread out.</span></span></li>
+      <li><span>Now 40 memories with 60% lost.<span class="see">Recall fades gradually, like early memory loss.</span></span></li>
+    </ol>
+  </div>
+
+  <h2>The equations</h2>
+  <div class="card">
+    <h3>Equation 1 · Storing (Hebb's rule)</h3>
+    <div class="eq" role="math" aria-label="W i j equals one over N times the sum over memories mu of p mu i times p mu j">
+      <span class="ln"><i>W<sub>ij</sub></i> = <sup>1</sup>⁄<sub><i>N</i></sub> Σ<sub><i>μ</i></sub> <i>p</i><sup><i>μ</i></sup><sub><i>i</i></sub> <i>p</i><sup><i>μ</i></sup><sub><i>j</i></sub></span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>p</i><sup><i>μ</i></sup><sub><i>i</i></sub></span><span>Pixel <i>i</i> of memory <i>μ</i>: +1 on, −1 off.</span></div>
+      <div><span class="sym"><i>W<sub>ij</sub></i></span><span>Link from neuron <i>j</i> to <i>i</i>. Positive if they tend to agree.</span></div>
+      <div><span class="sym"><i>W<sub>ii</sub></i> = 0</span><span>No neuron talks to itself.</span></div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Equation 2 · Recalling</h3>
+    <div class="eq" role="math" aria-label="h i equals the sum over j of W i j s j. s i becomes the sign of h i.">
+      <span class="ln"><i>h<sub>i</sub></i> = Σ<sub><i>j</i></sub> <i>W<sub>ij</sub></i> <i>s<sub>j</sub></i></span>
+      <span class="ln"><i>s<sub>i</sub></i> ← sign(<i>h<sub>i</sub></i>)</span>
+    </div>
+    <div class="terms-grid">
+      <div><span class="sym"><i>h<sub>i</sub></i></span><span>The vote: total input to neuron <i>i</i>.</span></div>
+      <div><span class="sym">sign</span><span>+1 if the vote is positive, −1 if negative.</span></div>
+    </div>
+    <p class="sub" style="margin-top:0.5rem">This is the leaky bucket from Step 1, shrunk to its essence: fire if the input is above zero.</p>
+  </div>
+  <div class="card">
+    <h3>Equation 3 · Energy</h3>
+    <div class="eq" role="math" aria-label="E equals minus one half times the sum over i and j of W i j s i s j">
+      <span class="ln"><i>E</i> = −½ Σ<sub><i>i</i>,<i>j</i></sub> <i>W<sub>ij</sub></i> <i>s<sub>i</sub></i> <i>s<sub>j</sub></i></span>
+    </div>
+    <p class="sub">Each update can only lower <i>E</i> or keep it the same, so recall always settles. Stored memories sit at the bottoms of valleys. Hopfield's 1982 insight was exactly this.</p>
+  </div>
+
+  <h2>Real vs our model</h2>
+  <div class="card vs">
+    <div class="item"><h3>Neurons</h3><div class="pair"><div class="r"><span>Real</span>Spiking, with timing (Steps 1–3).</div><div class="m"><span>Our model</span>On/off only. Fire if the vote is positive.</div></div></div>
+    <div class="item"><h3>Wiring</h3><div class="pair"><div class="r"><span>Real</span>CA3: each neuron reaches only a few percent of others. Links are one-way.</div><div class="m"><span>Our model</span>Everyone linked to everyone, both ways equal.</div></div></div>
+    <div class="item"><h3>Capacity</h3><div class="pair"><div class="r"><span>Real</span>Unknown, helped by sparse codes and pattern separation.</div><div class="m"><span>Our model</span>~0.14 × N ✓ (classic result)</div></div></div>
+    <div class="item"><h3>Damage</h3><div class="pair"><div class="r"><span>Real</span>In Alzheimer's, synapse loss tracks memory decline.</div><div class="m"><span>Our model</span>Graceful decline with synapse loss ✓</div></div></div>
+  </div>
+
+  <h2>Beyond the lab</h2>
+  <div class="card">
+    <h3>Emerging tech</h3>
+    <ul>
+      <li><b>Nobel Prize, 2024.</b> John Hopfield (this network) and Geoffrey Hinton (who built on it) won the Physics prize for foundations of today's AI.</li>
+      <li><b>Hidden inside AI.</b> The “attention” step in modern language models can be read as a modern Hopfield network that recalls the best-matching memory.</li>
+      <li><b>Computing in memory.</b> Grids of memristors store <i>W</i> as resistances and compute the vote <i>W</i> · <i>s</i> in one step, saving the energy spent moving data.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>For good</h3>
+    <ul>
+      <li><b>Alzheimer's research.</b> Loss of synapses is one of the strongest signs of memory decline. Models like Demo 2 help explain why early losses go unnoticed.</li>
+      <li><b>Memory prostheses.</b> In a small 2018 study, an implant that mimicked hippocampal activity improved some people's short-term memory scores by about a third.</li>
+      <li><b>Robust hardware.</b> Systems that fail gracefully, like this network, are valuable in medical and space electronics.</li>
+    </ul>
+  </div>
+
+  <h2>Key terms</h2>
+  <div class="card">
+    <dl class="terms">
+      <div><dt>Hopfield network</dt><dd>A fully connected network that stores patterns as stable states.</dd></div>
+      <div><dt>Attractor</dt><dd>A state the network settles into, like the bottom of a valley.</dd></div>
+      <div><dt>Pattern completion</dt><dd>Recovering a whole memory from part of it.</dd></div>
+      <div><dt>Energy</dt><dd>A score that only goes down during recall. Memories are its minima.</dd></div>
+      <div><dt>Overlap</dt><dd>How alike two patterns are: 1 = identical, 0 = unrelated.</dd></div>
+      <div><dt>Capacity</dt><dd>How many memories fit before recall breaks down.</dd></div>
+      <div><dt>Spurious state</dt><dd>A false valley: a blend of memories.</dd></div>
+      <div><dt>Hippocampus (CA3)</dt><dd>A brain region key for forming and recalling memories.</dd></div>
+    </dl>
+  </div>
+
+  <div class="card">
+    <h3>Run it yourself</h3>
+    <p class="sub">The same network in NumPy: <a href="https://github.com/cweekiat/mini-brain/blob/main/python/step04_memory.py">step04_memory.py</a></p>
+  </div>
+
+  <h2>Check yourself</h2>
+  <div class="card" id="quiz"></div>
+
+  <div class="card">
+    <label class="toggle" style="font-size:1.0625rem"><input type="checkbox" id="done"> Mark Step 4 as done</label>
+  </div>
+
+  <nav class="pager" aria-label="Steps">
+    <a href="03-brain-waves.html"><small>Previous</small>Brain waves</a>
+    <span class="next"><small>Next · Coming soon</small>Working memory</span>
+  </nav>
+</main>
+
+<footer><div class="wrap foot">Hopfield (1982), PNAS 79:2554. Capacity: Amit, Gutfreund &amp; Sompolinsky (1985). Prosthesis: Hampson et al. (2018), J. Neural Eng. 15:036014.</div></footer>
+
+<script type="module">
+import { N, SIDE, NAMES, picture, randomPatterns, hebb, damage, Recall, energy, overlap, corrupt } from "../assets/sim/hopfield.js";
+import { xyPlot, slider, fitCanvas, css } from "../assets/plot.js";
+import { C, K, IN, OUT, num, paint } from "../assets/livecode.js";
+import { isDone, setDone } from "../assets/steps.js";
+
+const $ = (id) => document.getElementById(id);
+const LABEL = { heart: "Heart", smile: "Smile", cross: "Cross", sun: "Sun" };
+
+// Draw a 20×20 pattern. `ref` marks wrong pixels in red; `focus` outlines one neuron.
+function drawGrid(cv, s, { ref = null, focus = -1 } = {}) {
+  const size = cv.clientWidth || 200, { ctx } = fitCanvas(cv, size);
+  const cell = size / SIDE, on = css("--accent"), off = css("--fill"), bad = css("--real");
+  ctx.clearRect(0, 0, size, size);
+  for (let i = 0; i < N; i++) {
+    const r = Math.floor(i / SIDE), c = i % SIDE;
+    ctx.fillStyle = ref && s[i] !== ref[i] ? bad : s[i] > 0 ? on : off;
+    ctx.fillRect(c * cell + 0.5, r * cell + 0.5, cell - 1, cell - 1);
+  }
+  if (focus >= 0) {
+    ctx.strokeStyle = css("--label"); ctx.lineWidth = 2;
+    ctx.strokeRect((focus % SIDE) * cell + 1, Math.floor(focus / SIDE) * cell + 1, cell - 2, cell - 2);
+  }
+}
+
+// ── Demo 1: complete a memory ────────────────────────────────────────
+const MEM = NAMES.map(picture);
+const W1 = hebb(MEM);
+const d1 = { pick: 0, flip: 0.2, hide: 0, seed: 1, cue: null, rec: null, running: false, E: [], flips: 0 };
+$("mems").innerHTML = NAMES.map((n, k) => `<button class="mem" data-k="${k}" aria-pressed="${k === 0}"><canvas></canvas>${LABEL[n]}</button>`).join("");
+const thumbs = () => document.querySelectorAll(".mem").forEach((b, k) => drawGrid(b.querySelector("canvas"), MEM[k]));
+$("bars").innerHTML = NAMES.map((n, k) => `<div class="bar"><span>${LABEL[n]}</span><div class="track"><div class="fill" id="bf${k}"></div></div><output id="bo${k}">–</output></div>`).join("");
+
+function newCue() {
+  d1.cue = corrupt(MEM[d1.pick], { flip: d1.flip, hide: d1.hide }, d1.seed);
+  d1.rec = new Recall(W1, d1.cue, d1.seed); d1.running = false; d1.E = [energy(W1, d1.rec.s)]; d1.flips = 0;
+  $("status").textContent = "Clue ready. Press Recall."; refresh1();
+}
+$("mems").addEventListener("click", (e) => {
+  const b = e.target.closest(".mem"); if (!b) return;
+  d1.pick = +b.dataset.k; document.querySelectorAll(".mem").forEach((x) => x.setAttribute("aria-pressed", x === b));
+  newCue();
+});
+slider("m-flip", (v) => v + "%", (v) => { d1.flip = v / 100; if (d1.cue) newCue(); });
+slider("m-hide", (v) => v + "%", (v) => { d1.hide = v / 100; if (d1.cue) newCue(); });
+$("m-new").onclick = () => { d1.seed++; newCue(); };
+$("m-recall").onclick = () => {
+  if (d1.rec.settled) { d1.rec = new Recall(W1, d1.rec.s, ++d1.seed); d1.E = [energy(W1, d1.rec.s)]; }
+  d1.running = true; $("status").textContent = "Recalling…";
+};
+// Tap or drag on the grid to edit the clue
+let painting = null;
+function cellAt(e) { const r = $("grid").getBoundingClientRect(); const c = Math.floor(((e.clientX - r.left) / r.width) * SIDE), w = Math.floor(((e.clientY - r.top) / r.height) * SIDE); return c >= 0 && c < SIDE && w >= 0 && w < SIDE ? w * SIDE + c : -1; }
+$("grid").addEventListener("pointerdown", (e) => { const i = cellAt(e); if (i < 0) return; painting = -d1.rec.s[i]; edit(i); $("grid").setPointerCapture(e.pointerId); });
+$("grid").addEventListener("pointermove", (e) => { if (painting !== null) { const i = cellAt(e); if (i >= 0) edit(i); } });
+addEventListener("pointerup", () => (painting = null));
+function edit(i) {
+  const s = Int8Array.from(d1.rec.s); s[i] = painting;
+  d1.cue = s; d1.rec = new Recall(W1, s, ++d1.seed); d1.running = false; d1.E = [energy(W1, s)]; d1.flips = 0;
+  $("status").textContent = "Your clue. Press Recall."; refresh1();
+}
+
+function frame1() {
+  if (!d1.running) return;
+  for (let k = 0; k < 6 && !d1.rec.settled; k++) if (d1.rec.updateOne()) d1.flips++;
+  if (d1.rec.k % 24 === 0 || d1.rec.settled) d1.E.push(energy(W1, d1.rec.s));
+  if (d1.rec.settled) {
+    d1.running = false;
+    const o = MEM.map((m) => overlap(d1.rec.s, m)), b = o.indexOf(Math.max(...o));
+    $("status").textContent = o[b] > 0.95 ? `✓ Recalled: ${LABEL[NAMES[b]]}` : o[b] < -0.95 ? `Settled on the negative of ${LABEL[NAMES[b]]}` : "Settled on a blend (false memory)";
+  }
+  refresh1();
+}
+function refresh1() {
+  drawGrid($("grid"), d1.rec.s, { focus: d1.running && d1.rec.last ? d1.rec.last.i : -1 });
+  MEM.forEach((m, k) => { const o = overlap(d1.rec.s, m); $("bf" + k).style.width = Math.max(0, o) * 100 + "%"; $("bo" + k).textContent = o.toFixed(2); });
+  const pts = d1.E.map((e, i) => [i, e]);
+  const lo = Math.min(...d1.E), hi = Math.max(...d1.E);
+  xyPlot($("energy"), { height: 120, xMax: Math.max(10, d1.E.length - 1), yMin: Math.floor(lo - 1), yMax: Math.ceil(hi + 1), xLabel: "time", yLabel: "E",
+    series: [{ points: pts, color: "--model" }], marker: pts.length ? { x: pts.length - 1, y: d1.E.at(-1), color: "--real" } : null });
+}
+function code1() {
+  const L = d1.rec.last, on = d1.running && L ? "hit" : "";
+  const o = MEM.map((m) => overlap(d1.rec.s, m)), b = o.indexOf(Math.max(...o));
+  paint("code1", [
+    C("# fixed: N = 400 neurons (20×20)"),
+    C("# s[i] = +1 on, −1 off"),
+    C("# learning, once (Hebb's rule):"),
+    "M = np.array(memories)  " + C("# 4 × 400"),
+    "W = M.T @ M / N",
+    "np.fill_diagonal(W, 0)",
+    "",
+    C("# input: the clue = a memory with"),
+    C("# pixels flipped, then bottom rows"),
+    C("# blanked to −1"),
+    `s = clue(${IN(LABEL[NAMES[d1.pick]].toLowerCase())},`,
+    `    flip=${IN(Math.round(d1.flip * 100) + "%")}, hide=${IN(Math.round(d1.hide * 100) + "%")})`,
+    "",
+    C("# recall: each sweep, every neuron"),
+    C("# once, in random order"),
+    [`${K("for")} i ${K("in")} rng.permutation(N):`, on],
+    [`    h = W[i] @ s  ${C("# the vote")}`, on],
+    [`    ${K("if")} h &gt; 0: s[i] = 1`, on],
+    [`    ${K("elif")} h &lt; 0: s[i] = -1`, on],
+    [`${C("# → i =")} ${OUT(L ? L.i : "–")} ${C("h =")} ${OUT(L ? num(L.h, 2) : "–")} ${C("s[i] =")} ${OUT(L ? (L.after > 0 ? "+1" : "−1") + (L.flipped ? " flipped" : "") : "–")}`, on],
+    C("# stop when a sweep flips nothing"),
+    `${C("# → sweep")} ${OUT(d1.rec.sweeps + (d1.rec.settled ? " settled" : ""))} ${C("flips")} ${OUT(d1.flips)}`,
+    "",
+    "E = -0.5 * s @ W @ s",
+    `${C("# →")} ${OUT(num(d1.E.at(-1) ?? 0, 2))}`,
+    `overlap = s @ ${LABEL[NAMES[b]].toLowerCase()} / N`,
+    `${C("# →")} ${OUT(o[b].toFixed(2))}`,
+  ]);
+}
+
+// ── Demo 2: capacity and damage ──────────────────────────────────────
+const PS = Array.from({ length: 16 }, (_, k) => 5 + 5 * k), T = 5;
+const d2 = { P: 30, dmg: 0, healthy: null, curve: {}, example: null, busy: 0 };
+let t2 = null; // debounce timer for slider changes
+function testQuality(P, dmg) {
+  const pats = randomPatterns(P, 7), W = damage(hebb(pats), dmg, 11);
+  let q = 0, ex = null;
+  for (let k = 0; k < T; k++) {
+    const cue = corrupt(pats[k], { flip: 0.1 }, k + 1), r = new Recall(W, cue, k + 1); r.run(15);
+    q += overlap(r.s, pats[k]);
+    if (k === 0) ex = { cue, out: Int8Array.from(r.s), truth: pats[k] };
+  }
+  return { q: q / T, ex };
+}
+// Curves are computed one point at a time so the page stays responsive
+function computeCurve(dmg, done) {
+  const key = dmg.toFixed(1); if (d2.curve[key]) return done();
+  const pts = []; let k = 0;
+  (function next() { if (k >= PS.length) { d2.curve[key] = pts; return done(); } pts.push([PS[k], testQuality(PS[k], dmg).q]); k++; setTimeout(next, 0); })();
+}
+function update2() {
+  const r = testQuality(d2.P, d2.dmg); d2.example = r.ex; d2.quality = r.q;
+  drawGrid($("t-cue"), r.ex.cue); drawGrid($("t-out"), r.ex.out, { ref: r.ex.truth }); drawGrid($("t-true"), r.ex.truth);
+  let wrong = 0; for (let i = 0; i < N; i++) if (r.ex.out[i] !== r.ex.truth[i]) wrong++;
+  d2.wrong = wrong;
+  $("q").textContent = r.q.toFixed(2); $("wrong").textContent = wrong + " of 400";
+  computeCurve(d2.dmg, drawCurve); code2();
+}
+function drawCurve() {
+  const cur = d2.curve[d2.dmg.toFixed(1)], healthy = d2.curve["0.0"];
+  const series = [{ points: [[55, -0.1], [55, 1.05]], color: "--real", dash: [4, 4] }];
+  if (healthy) series.push({ points: healthy, color: "--label-2" });
+  if (cur) series.push({ points: cur, color: "--accent" });
+  xyPlot($("curve"), { height: 170, xMin: 0, xMax: 80, yMin: 0.3, yMax: 1.05, xLabel: "memories", yLabel: "quality",
+    series, marker: { x: d2.P, y: d2.quality ?? 1, color: "--real" } });
+}
+slider("c-p", (v) => v, (v) => { d2.P = v; schedule2(); });
+slider("c-dmg", (v) => v + "%", (v) => { d2.dmg = v / 100; schedule2(); });
+function schedule2() { clearTimeout(t2); t2 = setTimeout(update2, 60); }
+function code2() {
+  paint("code2", [
+    C("# inputs: the sliders"),
+    `P = ${IN(d2.P)}  ${C("# memories stored")}`,
+    `lost = ${IN(d2.dmg.toFixed(1))}  ${C("# fraction cut")}`,
+    "",
+    C("# store P random ±1 patterns"),
+    "M = rng.choice([-1, 1], (P, N))",
+    "W = M.T @ M / N",
+    "np.fill_diagonal(W, 0)",
+    C("# cut synapses (both directions)"),
+    "cut = np.triu(rng.random((N, N))",
+    "              &lt; lost, 1)",
+    "W[cut | cut.T] = 0",
+    "",
+    C("# test memories 0–4; recall() is"),
+    C("# Demo 1's loop, until settled"),
+    `${K("for")} k ${K("in")} range(5):`,
+    "    s = flip(M[k], 0.10)",
+    `    s = recall(W, s, max_sweeps=15)`,
+    "    q += s @ M[k] / N",
+    "quality = q / 5",
+    `${C("# → quality =")} ${OUT((d2.quality ?? 0).toFixed(2))}`,
+    `${C("# → wrong pixels (memory 0):")} ${OUT(d2.wrong ?? "–")}`,
+    "",
+    C("# rule of thumb: recall breaks"),
+    C("# near P ≈ 0.14 × N = 55"),
+  ]);
+}
+
+// ── Start ────────────────────────────────────────────────────────────
+thumbs(); newCue(); computeCurve(0, () => update2());
+(function loop() { frame1(); code1(); requestAnimationFrame(loop); })();
+addEventListener("resize", () => { thumbs(); refresh1(); if (d2.example) update2(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { thumbs(); refresh1(); if (d2.example) update2(); });
+
+// ── Quiz ─────────────────────────────────────────────────────────────
+const QUIZ = [
+  { q: "Where is the “heart” memory stored?", o: ["In one special neuron", "Spread across all the synapses", "In the clue"], a: 1,
+    why: "Hebb's rule adds a little of every memory to every link. No single neuron holds it." },
+  { q: "Why does recall always settle instead of flickering forever?", o: ["Each update can only lower the energy", "Neurons get tired", "It stops after one sweep"], a: 0,
+    why: "Energy never goes up, and it can't fall forever, so the network must come to rest." },
+  { q: "Cutting 60% of synapses at 25 memories…", o: ["Erases most memories", "Barely changes recall", "Makes recall faster"], a: 1,
+    why: "Each memory is spread over thousands of links, so it degrades gracefully." },
+];
+$("quiz").innerHTML = QUIZ.map((x, i) => `
+  <div class="q" role="group" aria-labelledby="q${i}"><h3 id="q${i}">${i + 1}. ${x.q}</h3>
+  <div class="opts">${x.o.map((o, j) => `<button data-q="${i}" data-o="${j}">${o}</button>`).join("")}</div>
+  <p class="why" id="why-${i}" aria-live="polite"></p></div>`).join("");
+$("quiz").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-q]"); if (!b) return;
+  const x = QUIZ[+b.dataset.q], right = +b.dataset.o === x.a;
+  b.parentElement.querySelectorAll("button").forEach((o) => o.classList.remove("right", "wrong"));
+  b.classList.add(right ? "right" : "wrong");
+  $("why-" + b.dataset.q).textContent = (right ? "✓ Correct. " : "✕ Not quite. ") + x.why;
+});
+const done = $("done");
+done.checked = isDone(4);
+done.onchange = () => setDone(4, done.checked);
+</script>
+</body>
+</html>
